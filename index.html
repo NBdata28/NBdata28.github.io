@@ -4,70 +4,339 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NB Data Explorer</title>
+  <title>NB Data Explorer — Rugby</title>
+
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
   <style>
+    :root {
+      --navy: #142b45;
+      --blue: #2457d6;
+      --bg: #f4f7fb;
+      --border: #e1e6ee;
+      --muted: #667085;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       font-family: system-ui, sans-serif;
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 0 20px;
+      margin: 0;
       color: #202938;
-      background: #f6f8fb;
+      background: var(--bg);
     }
-    h1 { margin-bottom: 6px; }
-    .muted { color: #667085; }
+
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 25px max(20px, calc((100% - 1400px)/2));
+    }
+
+    header h1 { margin: 0 0 7px; }
+    header p { margin: 0; color: #d5e0ed; }
+
+    main {
+      max-width: 1400px;
+      margin: auto;
+      padding: 20px;
+    }
+
     .panel {
       background: white;
-      border: 1px solid #e1e6ee;
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 20px;
-      margin: 18px 0;
+      margin-bottom: 18px;
+      min-width: 0;
     }
-    button, select, input {
+
+    h2 { font-size: 19px; margin: 0 0 16px; }
+    h3 { font-size: 16px; margin: 10px 0; }
+
+    .muted, .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 650;
+      margin-bottom: 6px;
+    }
+
+    input, select, button {
       font: inherit;
-      padding: 9px;
+      padding: 10px;
       max-width: 100%;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: white;
     }
+
+    select, input[type="date"], input[type="file"] { width: 100%; }
+
     button {
       cursor: pointer;
-      border-radius: 8px;
-      border: 0;
-      background: #2457d6;
+      border: none;
+      background: var(--blue);
       color: white;
+      font-weight: 600;
     }
-    table { border-collapse: collapse; width: 100%; }
+
+    button.secondary {
+      background: #e8eef8;
+      color: var(--navy);
+    }
+
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .actions button { width: auto; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .metric .name { color: var(--muted); font-size: 12px; }
+    .metric .value {
+      font-size: 24px;
+      font-weight: 750;
+      margin-top: 7px;
+      overflow-wrap: anywhere;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+      gap: 16px;
+    }
+
+    .chart { width: 100%; min-height: 350px; }
+    .table-wrap { overflow: auto; max-height: 460px; }
+
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
     th, td {
       padding: 9px;
-      border-bottom: 1px solid #e7eaf0;
       text-align: left;
-      font-size: 14px;
+      border-bottom: 1px solid #e7eaf0;
+      white-space: nowrap;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .table-wrap { overflow-x: auto; }
-    #chart { width: 100%; min-height: 320px; }
-    #status { white-space: pre-wrap; }
+
+    th { background: #f4f7fb; position: sticky; top: 0; z-index: 1; }
+
+    .notice {
+      background: #eef5ff;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .warning {
+      background: #fff5e8;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .status { white-space: pre-wrap; }
+    .hidden { display: none; }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 10px; }
+      .panel { padding: 14px; }
+      header { padding: 20px 15px; }
+    }
   </style>
 </head>
-<body>
-  <h1>NB Data Explorer</h1>
-  <p class="muted">
-    Exploration statistique de fichiers CSV — traitement local.
-  </p>
 
+<body>
+<header>
+  <h1>NB Data Explorer</h1>
+  <p>Analyse des données GPS, physiques et cardio — Rugby</p>
+</header>
+
+<main>
   <section class="panel">
-    <h2>1. Importer un dossier</h2>
-    <p>Choisis le dossier contenant tes fichiers CSV.</p>
-    <input id="folder" type="file" webkitdirectory multiple>
-    <p id="status" class="muted">En attente d'un dossier.</p>
-    <label for="dataset">Fichier à explorer :</label>
-    <select id="dataset" disabled>
-      <option value="">Aucun fichier</option>
-    </select>
+    <h2>1. Importer les CSV</h2>
+    <p class="hint">
+      Sélectionne le dossier contenant les CSV de tes séances.
+      Les fichiers compatibles seront regroupés automatiquement.
+      Les données restent dans ce navigateur.
+    </p>
+
+    <label for="folder">Dossier CSV</label>
+    <input id="folder" type="file" webkitdirectory directory multiple accept=".csv,.txt">
+
+    <p class="hint">Ou sélectionne les fichiers individuellement :</p>
+    <input id="individualFiles" type="file" multiple accept=".csv,.txt">
+
+    <div id="status" class="muted status" role="status" aria-live="polite">
+      En attente des fichiers.
+    </div>
+    <div id="warnings" class="warning hidden"></div>
+
+    <p class="notice">
+      Confidentialité : les fichiers sont lus et analysés dans ton navigateur.
+      Ils ne sont pas envoyés sur GitHub. Les bibliothèques nécessaires sont
+      téléchargées depuis des CDN.
+    </p>
   </section>
 
   <section class="panel">
-    <h2>2. Aperçu des données</h2>
+    <h2>2. Filtrer les données</h2>
+
+    <div class="grid">
+      <div>
+        <label for="player">Joueur</label>
+        <select id="player"><option value="">Tous les joueurs</option></select>
+      </div>
+      <div>
+        <label for="period">Période</label>
+        <select id="period"><option value="">Toutes les périodes</option></select>
+      </div>
+      <div>
+        <label for="activity">Activité</label>
+        <select id="activity"><option value="">Toutes les activités</option></select>
+      </div>
+      <div>
+        <label for="position">Poste</label>
+        <select id="position"><option value="">Tous les postes</option></select>
+      </div>
+      <div>
+        <label for="dateFrom">Date de début</label>
+        <input id="dateFrom" type="date">
+      </div>
+      <div>
+        <label for="dateTo">Date de fin</label>
+        <input id="dateTo" type="date">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="reset" class="secondary">Réinitialiser les filtres</button>
+      <button id="export">Exporter les données filtrées (CSV)</button>
+      <button id="exportStats" class="secondary">Exporter les statistiques (CSV)</button>
+    </div>
+  </section>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="name">Lignes analysées</div>
+      <div id="rowCount" class="value">0</div>
+    </div>
+    <div class="metric">
+      <div class="name">Joueurs distincts</div>
+      <div id="playerCount" class="value">0</div>
+    </div>
+    <div class="metric">
+      <div class="name">Fichiers importés</div>
+      <div id="fileCount" class="value">0</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>3. Zones d'intensité cardiaque</h2>
+    <p class="hint">
+      Les durées de chaque zone sont additionnées ligne par ligne à partir
+      des colonnes FCmax. Les valeurs manquantes ne sont pas remplacées
+      par zéro : une zone sans aucune donnée source reste vide.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>Durée cumulée</th>
+            <th>Durée moyenne par ligne</th>
+            <th>Valeurs disponibles</th>
+          </tr>
+        </thead>
+        <tbody id="zoneStats"></tbody>
+      </table>
+    </div>
+
+    <div id="zoneWarnings" class="warning hidden" style="margin-top:12px"></div>
+  </section>
+
+  <section class="panel">
+    <h2>4. Statistiques descriptives</h2>
+
+    <div class="grid">
+      <div>
+        <label for="variable">Variable à analyser</label>
+        <select id="variable" disabled>
+          <option value="">Importer des données</option>
+        </select>
+      </div>
+      <div>
+        <label for="chartMode">Type de graphique</label>
+        <select id="chartMode">
+          <option value="histogram">Histogramme</option>
+          <option value="box">Boxplot par joueur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:15px">
+      <table>
+        <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
+        <tbody id="stats"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>5. Visualisation</h2>
+    <div id="chart" class="chart"></div>
+    <p class="hint">
+      L'histogramme montre la distribution des valeurs. Le boxplot compare
+      leur répartition par joueur.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>6. Aperçu des données fusionnées</h2>
     <p id="dimensions" class="muted">Aucune donnée chargée.</p>
     <div class="table-wrap">
       <table>
@@ -75,155 +344,375 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
+    <p class="hint">Affichage limité aux 50 premières lignes filtrées.</p>
   </section>
+</main>
 
-  <section class="panel">
-    <h2>3. Statistiques descriptives</h2>
-    <label for="variable">Variable numérique :</label>
-    <select id="variable" disabled></select>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Indicateur</th><th>Valeur</th></tr>
-        </thead>
-        <tbody id="stats"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>4. Distribution</h2>
-    <div id="chart"></div>
-  </section>
+<footer>NB Data Explorer · Analyse locale dans le navigateur</footer>
 
 <script>
-  const folder = document.getElementById("folder");
-  const dataset = document.getElementById("dataset");
-  const variable = document.getElementById("variable");
-  const status = document.getElementById("status");
+  const $ = id => document.getElementById(id);
 
-  let filesData = [];
+  const folder = $("folder");
+  const individualFiles = $("individualFiles");
+  const status = $("status");
+  const warnings = $("warnings");
+  const variable = $("variable");
 
-  folder.addEventListener("change", async () => {
-    filesData = [];
-    dataset.innerHTML = "";
-    status.textContent = "Lecture des fichiers CSV...";
+  const zoneDefinitions = [
+    {
+      label: "Zone Récupération",
+      sources: [
+        ["Duration <50% FCmax"],
+        ["Duration 50-60% FCmax"],
+        ["Duration 60-70%FCmax", "Duration 60-70% FCmax"]
+      ]
+    },
+    {
+      label: "Zone Moyenne Intensité",
+      sources: [
+        ["Duration 70-80%FCmax", "Duration 70-80% FCmax"],
+        ["Duration 80-85% FCmax"]
+      ]
+    },
+    {
+      label: "Zone Haute Intensité",
+      sources: [
+        ["Duration 85-90% FCmax"],
+        ["Duration 90-95% FCmax"]
+      ]
+    },
+    {
+      label: "Zone Très Haute Intensité",
+      sources: [
+        ["Duration 95-100% FCmax"]
+      ]
+    }
+  ];
 
-    const files = Array.from(folder.files).filter(
-      f => f.name.toLowerCase().endsWith(".csv")
+  let allRows = [];
+  let allColumns = [];
+  let importedFiles = [];
+  let zoneSourceMap = [];
+  let currentRows = [];
+  let detectedDateColumn = null;
+
+  function normalizeHeader(value) {
+    return String(value ?? "")
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function findColumn(columns, candidates) {
+    for (const candidate of candidates) {
+      const target = normalizeHeader(candidate);
+      const found = columns.find(col => normalizeHeader(col) === target);
+      if (found !== undefined) return found;
+    }
+    return null;
+  }
+
+  function parseNumber(value) {
+    if (value == null || String(value).trim() === "") return null;
+    let s = String(value).trim().replace(/\s/g, "").replace(/\u00a0/g, "");
+
+    // Prise en charge des décimales avec virgule.
+    if (s.includes(",") && !s.includes(".")) s = s.replace(",", ".");
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function dateISO(value) {
+    if (value == null || String(value).trim() === "") return "";
+
+    const s = String(value).trim();
+    let match;
+
+    // Format français : JJ/MM/AAAA ou JJ-MM-AAAA
+    match = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if (match) {
+      return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+    }
+
+    // Format ISO : AAAA-MM-JJ
+    match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (match) {
+      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+    }
+
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function nonEmpty(value) {
+    return value != null && String(value).trim() !== "";
+  }
+
+  function showWarning(message) {
+    warnings.textContent = message;
+    warnings.classList.toggle("hidden", !message);
+  }
+
+  function parseCSV(file) {
+    return new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: "greedy",
+        dynamicTyping: false,
+        delimiter: "",
+        transformHeader: header => String(header).replace(/^\uFEFF/, "").trim(),
+        complete: resolve,
+        error: reject
+      });
+    });
+  }
+
+  async function importFiles(fileList) {
+    const files = Array.from(fileList).filter(
+      file => /\.(csv|txt)$/i.test(file.name)
     );
 
-    for (const file of files) {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          Papa.parse(file, {
-            header: true,
-            skipEmptyLines: "greedy",
-            dynamicTyping: false,
-            complete: resolve,
-            error: reject
-          });
-        });
+    if (!files.length) {
+      status.textContent = "Aucun fichier CSV ou TXT sélectionné.";
+      return;
+    }
 
+    allRows = [];
+    allColumns = [];
+    importedFiles = [];
+    zoneSourceMap = [];
+    currentRows = [];
+
+    $("stats").replaceChildren();
+    $("zoneStats").replaceChildren();
+    $("thead").replaceChildren();
+    $("tbody").replaceChildren();
+    $("dimensions").textContent = "Lecture des fichiers...";
+    Plotly.purge("chart");
+
+    const messages = [];
+    let validCount = 0;
+    const referenceHeaders = new Set();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      status.textContent = `Lecture de ${i + 1}/${files.length} : ${file.name}`;
+
+      try {
+        const result = await parseCSV(file);
+        const columns = (result.meta.fields || []).map(c => String(c).trim());
+
+        if (!columns.length) {
+          messages.push(`${file.name} : aucun en-tête détecté.`);
+          continue;
+        }
+
+        const signature = columns.map(normalizeHeader).sort().join("|");
+
+        if (allColumns.length && signature !== referenceHeaders.values().next().value) {
+          messages.push(`${file.name} : colonnes différentes, fichier ignoré.`);
+          continue;
+        }
+
+        if (!allColumns.length) {
+          allColumns = columns.slice();
+          referenceHeaders.add(signature);
+        }
+
+        const sourceName = file.webkitRelativePath || file.name;
         const rows = result.data.filter(row =>
-          Object.values(row).some(v => String(v ?? "").trim() !== "")
+          Object.values(row).some(nonEmpty)
         );
 
-        filesData.push({
-          name: file.webkitRelativePath || file.name,
-          rows,
-          columns: result.meta.fields || [],
-          errors: result.errors.length
-        });
+        for (const row of rows) {
+          const clean = {};
+          for (const col of allColumns) {
+            // Correspondance tolérante aux espaces et accents d'en-tête.
+            const actualKey = Object.keys(row).find(
+              key => normalizeHeader(key) === normalizeHeader(col)
+            );
+            clean[col] = actualKey === undefined ? "" : row[actualKey];
+          }
+          clean["Fichier source"] = sourceName;
+          allRows.push(clean);
+        }
+
+        importedFiles.push(sourceName);
+        validCount++;
+        if (result.errors?.length) {
+          messages.push(`${file.name} : ${result.errors.length} avertissement(s) de lecture.`);
+        }
       } catch (error) {
         console.error(error);
+        messages.push(`${file.name} : erreur de lecture.`);
       }
     }
 
-    for (let i = 0; i < filesData.length; i++) {
-      const option = document.createElement("option");
-      option.value = i;
-      option.textContent = filesData[i].name;
-      dataset.appendChild(option);
+    if (!validCount || !allRows.length) {
+      status.textContent = "Aucune donnée compatible n'a pu être importée.";
+      showWarning(messages.join("\n"));
+      return;
     }
 
-    dataset.disabled = filesData.length === 0;
+    allColumns.push("Fichier source");
 
-    status.textContent = filesData.length
-      ? `${filesData.length} fichier(s) CSV chargé(s) dans le navigateur.`
-      : "Aucun CSV lisible trouvé.";
+    prepareZoneColumns();
+    populateFilters();
+    populateVariables();
 
-    if (filesData.length) showDataset(0);
-  });
+    $("fileCount").textContent = importedFiles.length;
+    status.textContent =
+      `${validCount} fichier(s) fusionné(s) · ${allRows.length} ligne(s) · ` +
+      `${allColumns.length} colonnes disponibles.`;
 
-  dataset.addEventListener("change", () => {
-    if (dataset.value !== "") showDataset(Number(dataset.value));
-  });
+    showWarning(messages.join("\n"));
+    updateAnalysis();
+  }
 
-  variable.addEventListener("change", updateAnalysis);
+  function prepareZoneColumns() {
+    zoneSourceMap = [];
+    const messages = [];
 
-  function showDataset(index) {
-    const data = filesData[index];
-    if (!data) return;
+    for (const zone of zoneDefinitions) {
+      const resolved = zone.sources.map(candidates =>
+        findColumn(allColumns, candidates)
+      );
 
-    document.getElementById("dimensions").textContent =
-      `${data.rows.length} lignes · ${data.columns.length} colonnes` +
-      (data.errors ? ` · ${data.errors} avertissement(s) de lecture` : "");
+      const missing = zone.sources
+        .filter((_, i) => !resolved[i])
+        .map(candidates => candidates[0]);
 
-    const thead = document.getElementById("thead");
-    const tbody = document.getElementById("tbody");
-    thead.replaceChildren();
-    tbody.replaceChildren();
+      zoneSourceMap.push({ label: zone.label, resolved, missing });
 
-    const headerRow = document.createElement("tr");
-    data.columns.forEach(col => {
-      const th = document.createElement("th");
-      th.textContent = col;
-      headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
+      if (missing.length) {
+        messages.push(
+          `${zone.label} : colonne(s) source introuvable(s) : ${missing.join(", ")}`
+        );
+      }
+    }
 
-    data.rows.slice(0, 20).forEach(row => {
-      const tr = document.createElement("tr");
-      data.columns.forEach(col => {
-        const td = document.createElement("td");
-        td.textContent = row[col] ?? "";
-        tr.appendChild(td);
+    for (const row of allRows) {
+      zoneSourceMap.forEach(zone => {
+        const usable = zone.resolved.filter(Boolean);
+        const values = usable.map(col => parseNumber(row[col]));
+        const anyValue = values.some(v => v !== null);
+        const allSourcesPresent = zone.missing.length === 0;
+
+        // Si une source est absente, ne pas présenter un total incomplet.
+        row[zone.label] =
+          allSourcesPresent && anyValue &&
+          values.every((v, i) => v !== null || !zone.resolved[i])
+            ? values.reduce((sum, v) => sum + (v ?? 0), 0)
+            : null;
       });
-      tbody.appendChild(tr);
-    });
+    }
 
+    showZoneWarnings(messages.join("\n"));
+  }
+
+  function showZoneWarnings(message) {
+    $("zoneWarnings").textContent = message ||
+      "Toutes les colonnes sources des quatre zones ont été détectées.";
+    $("zoneWarnings").classList.toggle("hidden", !message);
+  }
+
+  function selectOptions(id, placeholder, values) {
+    const select = $(id);
+    const previous = select.value;
+    select.replaceChildren();
+
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = placeholder;
+    select.appendChild(first);
+
+    [...new Set(values.filter(nonEmpty).map(v => String(v).trim()))]
+      .sort((a, b) => a.localeCompare(b, "fr"))
+      .forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+
+    if ([...select.options].some(o => o.value === previous)) {
+      select.value = previous;
+    }
+  }
+
+  function populateFilters() {
+    selectOptions("player", "Tous les joueurs", getValues(["Name"]));
+    selectOptions("period", "Toutes les périodes", getValues(["Period Name"]));
+    selectOptions("activity", "Toutes les activités", getValues(["Activity Name"]));
+    selectOptions("position", "Tous les postes", getValues(["Position Name"]));
+
+    detectedDateColumn = findColumn(allColumns, ["Date"]);
+  }
+
+  function getValues(candidates) {
+    const col = findColumn(allColumns, candidates);
+    return col ? allRows.map(row => row[col]) : [];
+  }
+
+  function populateVariables() {
+    const previous = variable.value;
     variable.replaceChildren();
-    const numericColumns = data.columns.filter(col => {
-      const values = data.rows
-        .map(row => parseNumber(row[col]))
-        .filter(v => v !== null);
-      return values.length > 0 &&
-        values.length >= data.rows.length * 0.8;
+
+    const columns = allColumns.filter(col => {
+      if (col === "Fichier source") return false;
+      const values = allRows.map(row => parseNumber(row[col]));
+      const count = values.filter(v => v !== null).length;
+      return count > 0 && count >= allRows.length * 0.5;
     });
 
-    numericColumns.forEach(col => {
+    // Ajouter les zones calculées, même si certaines lignes sont manquantes.
+    for (const zone of zoneDefinitions) {
+      if (allRows.some(row => parseNumber(row[zone.label]) !== null)) {
+        if (!columns.includes(zone.label)) columns.unshift(zone.label);
+      }
+    }
+
+    columns.forEach(col => {
       const option = document.createElement("option");
       option.value = col;
       option.textContent = col;
       variable.appendChild(option);
     });
 
-    variable.disabled = numericColumns.length === 0;
-    updateAnalysis();
+    variable.disabled = columns.length === 0;
+
+    if (columns.includes(previous)) variable.value = previous;
+    else if (columns.includes("Zone Récupération")) variable.value = "Zone Récupération";
   }
 
-  function parseNumber(value) {
-    if (value == null || String(value).trim() === "") return null;
-    let s = String(value).trim();
+  function getFilteredRows() {
+    const playerCol = findColumn(allColumns, ["Name"]);
+    const periodCol = findColumn(allColumns, ["Period Name"]);
+    const activityCol = findColumn(allColumns, ["Activity Name"]);
+    const positionCol = findColumn(allColumns, ["Position Name"]);
+    const from = $("dateFrom").value;
+    const to = $("dateTo").value;
 
-    // Accepte les nombres décimaux avec virgule.
-    if (s.includes(",") && !s.includes(".")) {
-      s = s.replace(",", ".");
-    }
+    return allRows.filter(row => {
+      if ($("player").value && (!playerCol || row[playerCol] !== $("player").value)) return false;
+      if ($("period").value && (!periodCol || row[periodCol] !== $("period").value)) return false;
+      if ($("activity").value && (!activityCol || row[activityCol] !== $("activity").value)) return false;
+      if ($("position").value && (!positionCol || row[positionCol] !== $("position").value)) return false;
 
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
+      if (from || to) {
+        const date = detectedDateColumn ? dateISO(row[detectedDateColumn]) : "";
+        if (!date) return false;
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+      }
+
+      return true;
+    });
   }
 
   function quantile(sorted, p) {
@@ -231,34 +720,31 @@
     const pos = (sorted.length - 1) * p;
     const low = Math.floor(pos);
     const high = Math.ceil(pos);
-    return sorted[low] +
-      (sorted[high] - sorted[low]) * (pos - low);
+    return sorted[low] + (sorted[high] - sorted[low]) * (pos - low);
   }
 
-  function updateAnalysis() {
-    const data = filesData[Number(dataset.value)];
-    const col = variable.value;
-    if (!data || !col || variable.disabled) {
-      document.getElementById("stats").replaceChildren();
-      Plotly.purge("chart");
-      return;
-    }
+  function formatNumber(value) {
+    return Number.isFinite(value)
+      ? value.toLocaleString("fr-FR", { maximumFractionDigits: 3 })
+      : "—";
+  }
 
-    const raw = data.rows.map(row => row[col]);
+  function fillStats(rows, col) {
+    const raw = rows.map(row => row[col]);
     const values = raw.map(parseNumber).filter(v => v !== null);
-    const missing = raw.length - values.length;
     const sorted = [...values].sort((a, b) => a - b);
     const mean = values.length
       ? values.reduce((a, b) => a + b, 0) / values.length
       : NaN;
     const variance = values.length > 1
-      ? values.reduce((s, x) => s + (x - mean) ** 2, 0)
-        / (values.length - 1)
+      ? values.reduce((sum, x) => sum + (x - mean) ** 2, 0) /
+        (values.length - 1)
       : NaN;
 
     const summary = [
+      ["Lignes filtrées", rows.length],
       ["Observations numériques", values.length],
-      ["Valeurs manquantes / non numériques", missing],
+      ["Valeurs manquantes / non numériques", raw.length - values.length],
       ["Moyenne", mean],
       ["Médiane", quantile(sorted, 0.5)],
       ["Écart-type (échantillon)", Math.sqrt(variance)],
@@ -268,7 +754,7 @@
       ["Maximum", sorted[sorted.length - 1]]
     ];
 
-    const tbody = document.getElementById("stats");
+    const tbody = $("stats");
     tbody.replaceChildren();
 
     summary.forEach(([label, value]) => {
@@ -276,63 +762,253 @@
       const th = document.createElement("td");
       const td = document.createElement("td");
       th.textContent = label;
-      td.textContent = typeof value === "number" && Number.isFinite(value)
-        ? value.toLocaleString("fr-FR", { maximumFractionDigits: 4 })
-        : "—";
+      td.textContent = typeof value === "number" ? formatNumber(value) : value;
       tr.append(th, td);
       tbody.appendChild(tr);
     });
+  }
 
-    Plotly.newPlot("chart", [{
-      x: values,
-      type: "histogram",
-      marker: { color: "#4776d0" },
-      hovertemplate: "Valeur : %{x}<br>Effectif : %{y}<extra></extra>"
-    }], {
-      title: `Distribution de ${col}`,
-      xaxis: { title: col },
-      yaxis: { title: "Effectif" },
-      margin: { t: 50, r: 20, b: 55, l: 55 },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white"
-    }, {
+  function fillZoneStats(rows) {
+    const tbody = $("zoneStats");
+    tbody.replaceChildren();
+
+    for (const zone of zoneDefinitions) {
+      const values = rows.map(row => parseNumber(row[zone.label]));
+      const usable = values.filter(v => v !== null);
+      const total = usable.reduce((a, b) => a + b, 0);
+      const mean = usable.length ? total / usable.length : NaN;
+
+      const tr = document.createElement("tr");
+      [
+        zone.label,
+        formatNumber(total),
+        formatNumber(mean),
+        `${usable.length} / ${rows.length}`
+      ].forEach(value => {
+        const td = document.createElement("td");
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+  }
+
+  function fillPreview(rows) {
+    const columns = allColumns;
+    $("dimensions").textContent =
+      `${rows.length} ligne(s) filtrée(s) · ${columns.length} colonnes · ` +
+      `affichage des ${Math.min(rows.length, 50)} premières lignes`;
+
+    const thead = $("thead");
+    const tbody = $("tbody");
+    thead.replaceChildren();
+    tbody.replaceChildren();
+
+    const trHead = document.createElement("tr");
+    columns.forEach(col => {
+      const th = document.createElement("th");
+      th.textContent = col;
+      trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+
+    rows.slice(0, 50).forEach(row => {
+      const tr = document.createElement("tr");
+      columns.forEach(col => {
+        const td = document.createElement("td");
+        td.textContent = row[col] == null ? "" : String(row[col]);
+        td.title = td.textContent;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function drawChart(rows, col) {
+    if (!rows.length || !col) {
+      Plotly.purge("chart");
+      return;
+    }
+
+    const mode = $("chartMode").value;
+    const playerCol = findColumn(allColumns, ["Name"]);
+    const validRows = rows.filter(row => parseNumber(row[col]) !== null);
+
+    if (!validRows.length) {
+      Plotly.purge("chart");
+      return;
+    }
+
+    let traces;
+    let layout;
+
+    if (mode === "box" && playerCol) {
+      const grouped = new Map();
+
+      validRows.forEach(row => {
+        const player = String(row[playerCol] || "Joueur inconnu");
+        if (!grouped.has(player)) grouped.set(player, []);
+        grouped.get(player).push(parseNumber(row[col]));
+      });
+
+      const entries = [...grouped.entries()].sort((a, b) =>
+        a[0].localeCompare(b[0], "fr")
+      );
+
+      // Limiter le nombre de joueurs affichés pour préserver la lisibilité.
+      const shown = entries.slice(0, 40);
+
+      traces = shown.map(([name, values]) => ({
+        type: "box",
+        name,
+        y: values,
+        boxpoints: false,
+        hovertemplate: `${name}<br>Valeur : %{y}<extra></extra>`
+      }));
+
+      layout = {
+        title: `Distribution de ${col} par joueur`,
+        yaxis: { title: col },
+        xaxis: { title: "Joueur", automargin: true },
+        showlegend: false,
+        margin: { t: 55, r: 20, b: 110, l: 65 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white"
+      };
+
+      if (entries.length > 40) {
+        layout.title += " (40 premiers joueurs affichés)";
+      }
+    } else {
+      traces = [{
+        x: validRows.map(row => parseNumber(row[col])),
+        type: "histogram",
+        hovertemplate: "Valeur : %{x}<br>Effectif : %{y}<extra></extra>"
+      }];
+
+      layout = {
+        title: `Distribution de ${col}`,
+        xaxis: { title: col },
+        yaxis: { title: "Effectif" },
+        margin: { t: 55, r: 20, b: 60, l: 65 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white"
+      };
+    }
+
+    Plotly.react("chart", traces, layout, {
       responsive: true,
       displaylogo: false
     });
   }
-</script>
-<script>
-  // Le JavaScript existant de ton application...
 
-  function nombre(valeur) {
-    if (valeur === null || valeur === undefined || valeur === "") {
-      return 0;
+  function updateAnalysis() {
+    currentRows = getFilteredRows();
+
+    const playerCol = findColumn(allColumns, ["Name"]);
+    const players = playerCol
+      ? new Set(currentRows.map(row => row[playerCol]).filter(nonEmpty))
+      : new Set();
+
+    $("rowCount").textContent = currentRows.length.toLocaleString("fr-FR");
+    $("playerCount").textContent = players.size.toLocaleString("fr-FR");
+    $("fileCount").textContent = importedFiles.length.toLocaleString("fr-FR");
+
+    fillZoneStats(currentRows);
+    fillPreview(currentRows);
+
+    if (variable.value && !variable.disabled) {
+      fillStats(currentRows, variable.value);
+      drawChart(currentRows, variable.value);
+    } else {
+      $("stats").replaceChildren();
+      Plotly.purge("chart");
+    }
+  }
+
+  function csvCell(value) {
+    const s = value == null ? "" : String(value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function downloadCSV(rows, columns, filename) {
+    const csv = "\uFEFF" + [
+      columns.map(csvCell).join(";"),
+      ...rows.map(row => columns.map(col => csvCell(row[col])).join(";"))
+    ].join("\r\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportStats() {
+    if (!currentRows.length || !variable.value) {
+      alert("Aucune donnée à exporter.");
+      return;
     }
 
-    const n = Number(String(valeur).trim().replace(",", "."));
-    return Number.isFinite(n) ? n : 0;
+    const col = variable.value;
+    const values = currentRows.map(row => parseNumber(row[col])).filter(v => v !== null);
+    const sorted = [...values].sort((a, b) => a - b);
+    const mean = values.length
+      ? values.reduce((a, b) => a + b, 0) / values.length
+      : NaN;
+    const variance = values.length > 1
+      ? values.reduce((s, x) => s + (x - mean) ** 2, 0) / (values.length - 1)
+      : NaN;
+
+    const rows = [
+      { Indicateur: "Variable", Valeur: col },
+      { Indicateur: "Lignes filtrées", Valeur: currentRows.length },
+      { Indicateur: "Observations numériques", Valeur: values.length },
+      { Indicateur: "Moyenne", Valeur: mean },
+      { Indicateur: "Médiane", Valeur: quantile(sorted, 0.5) },
+      { Indicateur: "Écart-type (échantillon)", Valeur: Math.sqrt(variance) },
+      { Indicateur: "Minimum", Valeur: sorted[0] },
+      { Indicateur: "Premier quartile", Valeur: quantile(sorted, 0.25) },
+      { Indicateur: "Troisième quartile", Valeur: quantile(sorted, 0.75) },
+      { Indicateur: "Maximum", Valeur: sorted[sorted.length - 1] }
+    ];
+
+    downloadCSV(rows, ["Indicateur", "Valeur"], "statistiques_rugby.csv");
   }
 
-  function calculerZonesFC(ligne) {
-    return {
-      "Zone Récupération":
-        nombre(ligne["Duration <50% FCmax"]) +
-        nombre(ligne["Duration 50-60% FCmax"]) +
-        nombre(ligne["Duration 60-70%FCmax"]),
+  folder.addEventListener("change", () => {
+    if (folder.files.length) importFiles(folder.files);
+  });
 
-      "Zone Moyenne Intensité":
-        nombre(ligne["Duration 70-80%FCmax"]) +
-        nombre(ligne["Duration 80-85% FCmax"]),
+  individualFiles.addEventListener("change", () => {
+    if (individualFiles.files.length) importFiles(individualFiles.files);
+  });
 
-      "Zone Haute Intensité":
-        nombre(ligne["Duration 85-90% FCmax"]) +
-        nombre(ligne["Duration 90-95% FCmax"]),
+  ["player", "period", "activity", "position", "dateFrom", "dateTo"]
+    .forEach(id => $(id).addEventListener("change", updateAnalysis));
 
-      "Zone Très Haute Intensité":
-        nombre(ligne["Duration 95-100% FCmax"])
-    };
-  }
-</script>  
+  variable.addEventListener("change", updateAnalysis);
+  $("chartMode").addEventListener("change", updateAnalysis);
 
+  $("reset").addEventListener("click", () => {
+    ["player", "period", "activity", "position", "dateFrom", "dateTo"]
+      .forEach(id => $(id).value = "");
+    updateAnalysis();
+  });
+
+  $("export").addEventListener("click", () => {
+    if (!currentRows.length) {
+      alert("Aucune donnée à exporter.");
+      return;
+    }
+    downloadCSV(currentRows, allColumns, "donnees_rugby_filtrees.csv");
+  });
+
+  $("exportStats").addEventListener("click", exportStats);
+</script>
 </body>
 </html>
