@@ -2,448 +2,243 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NB Data Explorer — Rugby</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NB Data Explorer — Rugby</title>
 
-  <!-- Bibliothèques chargées depuis des CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
-  <style>
-    :root {
-      --primary: #173f5f;
-      --accent: #206a8a;
-      --background: #f3f6f9;
-      --border: #dce3ea;
-      --text: #243447;
-      --muted: #64748b;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: var(--background);
-      color: var(--text);
-      line-height: 1.5;
-    }
-
-    header {
-      background: var(--primary);
-      color: white;
-      padding: 28px 20px;
-    }
-
-    header h1 {
-      margin: 0 0 6px;
-      font-size: 28px;
-    }
-
-    header p { margin: 0; opacity: 0.9; }
-
-    main {
-      max-width: 1250px;
-      margin: 24px auto;
-      padding: 0 16px 40px;
-    }
-
-    .panel {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 18px;
-      box-shadow: 0 2px 8px rgba(20, 40, 60, 0.04);
-    }
-
-    h2 {
-      margin: 0 0 16px;
-      font-size: 20px;
-      color: var(--primary);
-    }
-
-    h3 {
-      margin: 18px 0 10px;
-      font-size: 16px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 7px;
-      background: white;
-      color: var(--text);
-      font: inherit;
-    }
-
-    input[type="file"] { padding: 8px; }
-
-    button {
-      background: var(--accent);
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    button:hover { filter: brightness(0.92); }
-
-    button.secondary {
-      background: #e7edf3;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .button-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .button-row button {
-      width: auto;
-      min-width: 160px;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .status {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 7px;
-      background: #eef4f8;
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .status.error {
-      background: #fff0f0;
-      color: #9b2222;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-
-    .metric {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-    }
-
-    .metric .value {
-      font-size: 25px;
-      font-weight: bold;
-      color: var(--primary);
-      overflow-wrap: anywhere;
-    }
-
-    .metric .label {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 4px;
-    }
-
-    .table-wrap {
-      overflow: auto;
-      max-height: 420px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 9px 11px;
-      border-bottom: 1px solid #e8edf2;
-    }
-
-    th {
-      background: #edf2f7;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    .zone-table td:first-child { font-weight: bold; }
-
-    .chart {
-      width: 100%;
-      min-height: 360px;
-    }
-
-    .zone-key {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .zone-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-    }
-
-    .swatch {
-      display: inline-block;
-      width: 13px;
-      height: 13px;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
-
-    .hidden { display: none; }
-
-    footer {
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      padding: 12px;
-    }
-
-    @media (max-width: 600px) {
-      header h1 { font-size: 23px; }
-      .panel { padding: 15px; }
-      .button-row button { width: 100%; }
-    }
-  </style>
+<style>
+:root {
+  --navy:#173f5f;
+  --blue:#2878d0;
+  --bg:#f3f6f9;
+  --border:#dce3ea;
+  --text:#243447;
+  --muted:#64748b;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+}
+header {
+  background:var(--navy);
+  color:white;
+  padding:26px 20px;
+}
+header h1 { margin:0 0 5px; font-size:27px; }
+header p { margin:0; }
+main { max-width:1300px; margin:24px auto; padding:0 16px 40px; }
+.panel {
+  background:white;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:18px;
+  box-shadow:0 2px 8px #14283c08;
+}
+h2 { color:var(--navy); margin:0 0 14px; font-size:20px; }
+h3 { font-size:16px; margin:20px 0 10px; }
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:14px;
+}
+label { display:block; font-size:13px; font-weight:bold; margin-bottom:6px; }
+input,select,button {
+  width:100%;
+  padding:10px;
+  border:1px solid #cbd5e1;
+  border-radius:7px;
+  background:white;
+  color:var(--text);
+  font:inherit;
+}
+input[type=file] { padding:8px; }
+button {
+  background:var(--blue);
+  color:white;
+  border:0;
+  cursor:pointer;
+  font-weight:bold;
+}
+button:hover { filter:brightness(.94); }
+button.secondary { background:#e7edf3; color:var(--text); }
+.button-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+.button-row button { width:auto; min-width:170px; }
+.muted { color:var(--muted); font-size:13px; }
+.status {
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:7px;
+  background:#eef4f8;
+  font-size:14px;
+  overflow-wrap:anywhere;
+}
+.status.error { background:#fff0f0; color:#9b2222; }
+.metrics {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+.metric {
+  background:white;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:15px;
+}
+.metric .value { font-size:24px; font-weight:bold; color:var(--navy); }
+.metric .label { color:var(--muted); font-size:13px; }
+.table-wrap {
+  overflow:auto;
+  max-height:420px;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+table { border-collapse:collapse; width:100%; font-size:13px; white-space:nowrap; }
+th,td { text-align:left; padding:9px 11px; border-bottom:1px solid #e8edf2; }
+th { background:#edf2f7; position:sticky; top:0; z-index:1; }
+.chart { width:100%; min-height:380px; }
+.zone-key {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin:12px 0;
+}
+.zone-item { display:flex; align-items:center; gap:8px; font-size:13px; }
+.swatch { width:13px; height:13px; border-radius:3px; flex-shrink:0; }
+.hidden { display:none; }
+footer { text-align:center; color:var(--muted); font-size:12px; padding:12px; }
+@media(max-width:600px) {
+  header h1 { font-size:23px; }
+  .panel { padding:15px; }
+  .button-row button { width:100%; }
+}
+</style>
 </head>
 
 <body>
 <header>
   <h1>NB Data Explorer</h1>
-  <p>Analyse des données de performance rugby et des zones de fréquence cardiaque.</p>
+  <p>Analyse des performances rugby et comparaison des zones de fréquence cardiaque.</p>
 </header>
 
 <main>
   <section class="panel">
     <h2>1. Importer les fichiers CSV</h2>
-    <p>
-      Sélectionne un ou plusieurs fichiers CSV, ou un dossier contenant tes fichiers.
-      Les fichiers compatibles seront regroupés dans un jeu de données unique.
-    </p>
-
+    <p>Sélectionne plusieurs fichiers CSV ou un dossier contenant tes fichiers.</p>
     <div class="grid">
       <div>
-        <label for="csvFiles">Sélectionner des fichiers CSV</label>
+        <label for="csvFiles">Fichiers CSV</label>
         <input id="csvFiles" type="file" accept=".csv,text/csv" multiple>
       </div>
-
       <div>
-        <label for="folder">Sélectionner un dossier</label>
+        <label for="folder">Dossier contenant les CSV</label>
         <input id="folder" type="file" accept=".csv,text/csv"
                webkitdirectory directory multiple>
       </div>
     </div>
-
     <div class="button-row">
-      <button id="clearData" class="secondary" type="button">
-        Réinitialiser les données
-      </button>
+      <button id="clearData" class="secondary" type="button">Réinitialiser</button>
     </div>
-
-    <div id="importStatus" class="status">
-      En attente de fichiers CSV.
-    </div>
-    <p class="muted">
-      Confidentialité : le traitement est réalisé localement dans ton navigateur.
-      Les bibliothèques JavaScript sont chargées depuis des CDN.
-    </p>
+    <div id="importStatus" class="status">En attente de fichiers CSV.</div>
+    <p class="muted">Les données sont traitées dans ton navigateur. Elles ne sont pas envoyées sur un serveur.</p>
   </section>
 
   <div id="analysisArea" class="hidden">
     <div class="metrics">
-      <div class="metric">
-        <div id="rowCount" class="value">0</div>
-        <div class="label">Lignes filtrées</div>
-      </div>
-      <div class="metric">
-        <div id="playerCount" class="value">0</div>
-        <div class="label">Joueurs</div>
-      </div>
-      <div class="metric">
-        <div id="fileCount" class="value">0</div>
-        <div class="label">Fichiers importés</div>
-      </div>
-      <div class="metric">
-        <div id="dateCount" class="value">0</div>
-        <div class="label">Dates disponibles</div>
-      </div>
+      <div class="metric"><div id="rowCount" class="value">0</div><div class="label">Lignes filtrées</div></div>
+      <div class="metric"><div id="playerCount" class="value">0</div><div class="label">Joueurs</div></div>
+      <div class="metric"><div id="fileCount" class="value">0</div><div class="label">Fichiers importés</div></div>
+      <div class="metric"><div id="dateCount" class="value">0</div><div class="label">Dates disponibles</div></div>
     </div>
 
     <section class="panel">
-      <h2>2. Filtrer les données</h2>
-
+      <h2>2. Filtres généraux</h2>
       <div class="grid">
-        <div>
-          <label for="filterPlayer">Joueur</label>
-          <select id="filterPlayer">
-            <option value="">Tous les joueurs</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="filterDate">Date</label>
-          <select id="filterDate">
-            <option value="">Toutes les dates</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="period">Période</label>
-          <select id="period">
-            <option value="">Toutes les périodes</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="activity">Activité</label>
-          <select id="activity">
-            <option value="">Toutes les activités</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="position">Poste</label>
-          <select id="position">
-            <option value="">Tous les postes</option>
-          </select>
-        </div>
+        <div><label for="filterPlayer">Joueur</label><select id="filterPlayer"><option value="">Tous les joueurs</option></select></div>
+        <div><label for="filterDate">Date</label><select id="filterDate"><option value="">Toutes les dates</option></select></div>
+        <div><label for="period">Période</label><select id="period"><option value="">Toutes les périodes</option></select></div>
+        <div><label for="activity">Activité</label><select id="activity"><option value="">Toutes les activités</option></select></div>
+        <div><label for="position">Poste</label><select id="position"><option value="">Tous les postes</option></select></div>
       </div>
-
       <div class="button-row">
-        <button id="resetFilters" class="secondary" type="button">
-          Effacer les filtres
-        </button>
-        <button id="exportFiltered" type="button">
-          Exporter les données filtrées
-        </button>
+        <button id="resetFilters" class="secondary" type="button">Effacer les filtres</button>
+        <button id="exportFiltered" type="button">Exporter les données filtrées</button>
       </div>
     </section>
 
     <section class="panel">
-      <h2>3. Répartition des quatre zones de FC</h2>
-
-      <p class="muted">
-        Sélectionne une date et, si besoin, un joueur. Le graphique additionne
-        les durées des lignes retenues pour chaque zone. Si « Tous les joueurs »
-        est sélectionné, les durées de tous les joueurs sont additionnées.
+      <h2>3. Comparaison d'un joueur à son historique</h2>
+      <p>
+        Les barres colorées représentent la séance sélectionnée.
+        Les barres pâles en arrière-plan représentent la moyenne des cinq séances
+        antérieures du même joueur, calculée zone par zone.
       </p>
 
       <div class="grid">
         <div>
-          <label for="fcDate">Date à analyser</label>
-          <select id="fcDate">
-            <option value="">Toutes les dates</option>
-          </select>
+          <label for="fcDate">Date de la séance</label>
+          <select id="fcDate"><option value="">Sélectionner une date</option></select>
         </div>
-
         <div>
-          <label for="fcPlayer">Joueur à analyser</label>
-          <select id="fcPlayer">
-            <option value="">Tous les joueurs</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="fcDisplay">Affichage du graphique</label>
-          <select id="fcDisplay">
-            <option value="duration">Durées cumulées</option>
-            <option value="percentage">Pourcentage du total</option>
-          </select>
+          <label for="fcPlayer">Joueur</label>
+          <select id="fcPlayer"><option value="">Sélectionner un joueur</option></select>
         </div>
       </div>
 
       <div id="fcChart" class="chart"></div>
 
       <div class="zone-key">
-        <div class="zone-item">
-          <span class="swatch" style="background:#6BAED6"></span>
-          Zone Récupération
-        </div>
-        <div class="zone-item">
-          <span class="swatch" style="background:#66B879"></span>
-          Zone Moyenne Intensité
-        </div>
-        <div class="zone-item">
-          <span class="swatch" style="background:#F0B44D"></span>
-          Zone Haute Intensité
-        </div>
-        <div class="zone-item">
-          <span class="swatch" style="background:#D9534F"></span>
-          Zone Très Haute Intensité
-        </div>
+        <div class="zone-item"><span class="swatch" style="background:#6BAED6"></span>Zone Récupération</div>
+        <div class="zone-item"><span class="swatch" style="background:#66B879"></span>Zone Moyenne Intensité</div>
+        <div class="zone-item"><span class="swatch" style="background:#F0B44D"></span>Zone Haute Intensité</div>
+        <div class="zone-item"><span class="swatch" style="background:#D9534F"></span>Zone Très Haute Intensité</div>
       </div>
-
-      <div id="fcStatus" class="status">
-        Importe des fichiers CSV pour afficher le graphique.
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>4. Résumé des zones de FC</h2>
       <p class="muted">
-        Les durées sont calculées à partir des colonnes sources du CSV.
-        Une valeur de zone est laissée vide si une des colonnes nécessaires
-        est absente ou si une valeur source est manquante.
+        Les durées restent dans l'unité des colonnes sources. Les séances antérieures
+        sont déterminées par leur date, pas par l'ordre des lignes dans les fichiers.
       </p>
+      <div id="fcStatus" class="status">Importe des CSV pour commencer.</div>
 
+      <h3>Détail de la comparaison</h3>
       <div class="table-wrap">
-        <table class="zone-table">
+        <table>
           <thead>
             <tr>
-              <th>Zone</th>
-              <th>Durée cumulée</th>
-              <th>Part du total</th>
+              <th>Zone FC</th>
+              <th>Séance sélectionnée</th>
+              <th>Moyenne historique</th>
+              <th>Écart</th>
             </tr>
           </thead>
-          <tbody id="zoneSummary">
-            <tr><td colspan="3">Aucune donnée disponible.</td></tr>
+          <tbody id="fcTableBody">
+            <tr><td colspan="4">Aucune donnée disponible.</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <section class="panel">
-      <h2>5. Analyse statistique d'une variable</h2>
+      <h2>4. Résumé des zones FC — filtres généraux</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zone</th><th>Durée cumulée</th><th>Part du total</th></tr></thead>
+          <tbody id="zoneSummary"><tr><td colspan="3">Aucune donnée disponible.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
 
+    <section class="panel">
+      <h2>5. Analyse statistique d'une variable</h2>
       <div class="grid">
-        <div>
-          <label for="variable">Variable numérique</label>
-          <select id="variable"></select>
-        </div>
+        <div><label for="variable">Variable numérique</label><select id="variable"></select></div>
         <div>
           <label for="chartType">Type de graphique</label>
           <select id="chartType">
@@ -452,1047 +247,751 @@
           </select>
         </div>
       </div>
-
       <h3>Statistiques descriptives</h3>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>Nombre de valeurs</th>
-              <th>Moyenne</th>
-              <th>Médiane</th>
-              <th>Minimum</th>
-              <th>Maximum</th>
-              <th>Écart-type</th>
-            </tr>
-          </thead>
-          <tbody id="statsBody">
-            <tr><td colspan="6">Aucune donnée disponible.</td></tr>
-          </tbody>
+          <thead><tr><th>Nombre</th><th>Moyenne</th><th>Médiane</th><th>Minimum</th><th>Maximum</th><th>Écart-type</th></tr></thead>
+          <tbody id="statsBody"><tr><td colspan="6">Aucune donnée disponible.</td></tr></tbody>
         </table>
       </div>
-
       <div id="variableChart" class="chart"></div>
     </section>
 
     <section class="panel">
       <h2>6. Aperçu des données</h2>
       <p id="previewStatus" class="muted"></p>
-
       <div class="table-wrap">
-        <table id="previewTable">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
+        <table id="previewTable"><thead></thead><tbody></tbody></table>
       </div>
-
       <div class="button-row">
-        <button id="exportStats" class="secondary" type="button">
-          Exporter les statistiques
-        </button>
+        <button id="exportStats" class="secondary" type="button">Exporter les statistiques</button>
       </div>
     </section>
   </div>
 </main>
 
-<footer>
-  NB Data Explorer · Analyse locale de fichiers CSV
-</footer>
+<footer>NB Data Explorer · Analyse locale de fichiers CSV</footer>
 
 <script>
-  "use strict";
+"use strict";
 
-  const $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-  let allRows = [];
-  let allColumns = [];
-  let sourceFiles = [];
-  let detectedDateColumn = null;
-  let zoneDefinitions = [];
-  let importedCount = 0;
+let allRows = [];
+let allColumns = [];
+let sourceFiles = [];
+let importedCount = 0;
+let zoneDefinitions = [];
 
-  const zoneColors = [
-    "#6BAED6",
-    "#66B879",
-    "#F0B44D",
-    "#D9534F"
+const zoneColors = ["#6BAED6", "#66B879", "#F0B44D", "#D9534F"];
+
+const zoneCandidates = [
+  {
+    label: "Zone Récupération",
+    sources: [
+      ["Duration <50% FCmax"],
+      ["Duration 50-60% FCmax"],
+      ["Duration 60-70%FCmax", "Duration 60-70% FCmax"]
+    ]
+  },
+  {
+    label: "Zone Moyenne Intensité",
+    sources: [
+      ["Duration 70-80%FCmax", "Duration 70-80% FCmax"],
+      ["Duration 80-85% FCmax"]
+    ]
+  },
+  {
+    label: "Zone Haute Intensité",
+    sources: [
+      ["Duration 85-90% FCmax"],
+      ["Duration 90-95% FCmax"]
+    ]
+  },
+  {
+    label: "Zone Très Haute Intensité",
+    sources: [["Duration 95-100% FCmax"]]
+  }
+];
+
+function normalizeHeader(value) {
+  return String(value ?? "")
+    .replace(/^\uFEFF/, "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findColumn(columns, candidates) {
+  for (const candidate of candidates) {
+    const target = normalizeHeader(candidate);
+    const found = columns.find(col => normalizeHeader(col) === target);
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseNumber(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  let s = String(value).trim();
+  if (!s || ["-", "na", "n/a", "null"].includes(s.toLowerCase())) return null;
+  s = s.replace(/\u00A0/g, "").replace(/\s/g, "");
+
+  if (s.includes(",") && s.includes(".")) {
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else {
+    s = s.replace(",", ".");
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function dateISO(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const s = String(value).trim();
+
+  let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+
+  m = s.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})/);
+  if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0,10);
+}
+
+function displayDate(value) {
+  const s = dateISO(value);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
+}
+
+function fmt(value, decimals = 2) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return value.toLocaleString("fr-FR", { maximumFractionDigits:decimals });
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== "")
+    .map(v => String(v).trim()))]
+    .sort((a,b) => a.localeCompare(b, "fr", {numeric:true}));
+}
+
+function setStatus(message, error = false) {
+  $("importStatus").textContent = message;
+  $("importStatus").classList.toggle("error", error);
+}
+
+function selectOptions(id, label, values, previous = "") {
+  const select = $(id);
+  select.replaceChildren();
+
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = label;
+  select.appendChild(first);
+
+  uniqueValues(values).forEach(value => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = value;
+    select.appendChild(opt);
+  });
+
+  if ([...select.options].some(o => o.value === previous)) select.value = previous;
+}
+
+function resolveZones() {
+  zoneDefinitions = zoneCandidates.map(zone => {
+    const resolved = zone.sources.map(candidates => findColumn(allColumns, candidates));
+    return {label:zone.label, resolved, complete:resolved.every(Boolean)};
+  });
+}
+
+function zoneValue(row, zone) {
+  if (!zone.complete) return null;
+  const values = zone.resolved.map(col => parseNumber(row[col]));
+  if (values.some(v => v === null)) return null;
+  return values.reduce((sum,v) => sum + v, 0);
+}
+
+function prepareZones() {
+  resolveZones();
+  allRows.forEach(row => zoneDefinitions.forEach(zone => {
+    row[zone.label] = zoneValue(row, zone);
+  }));
+}
+
+function compatibleHeaders(a,b) {
+  const x = a.map(normalizeHeader).sort();
+  const y = b.map(normalizeHeader).sort();
+  return x.length === y.length && x.every((v,i) => v === y[i]);
+}
+
+function parseCSVFile(file) {
+  return new Promise((resolve,reject) => {
+    Papa.parse(file, {
+      header:true,
+      skipEmptyLines:"greedy",
+      dynamicTyping:false,
+      delimiter:"",
+      transformHeader:h => String(h).replace(/^\uFEFF/,"").trim(),
+      complete:results => {
+        const fields = (results.meta.fields || []).map(s => String(s).trim()).filter(Boolean);
+        if (!fields.length) return reject(new Error(`${file.name} : aucune colonne reconnue.`));
+
+        const rows = results.data.filter(row =>
+          row && Object.values(row).some(v => v !== null && v !== undefined && String(v).trim() !== "")
+        );
+        resolve({fileName:file.name, fields, rows, errors:results.errors || []});
+      },
+      error:reject
+    });
+  });
+}
+
+async function importFiles(fileList) {
+  const files = [...fileList].filter(f => /\.csv$/i.test(f.name));
+  if (!files.length) return setStatus("Aucun fichier CSV sélectionné.", true);
+
+  setStatus(`Import en cours : ${files.length} fichier(s)…`);
+  $("analysisArea").classList.add("hidden");
+
+  allRows = [];
+  allColumns = [];
+  sourceFiles = [];
+  importedCount = 0;
+
+  const parsed = [];
+  const errors = [];
+
+  for (const file of files) {
+    try {
+      const result = await parseCSVFile(file);
+      parsed.push(result);
+      if (result.errors.length) errors.push(`${file.name} : ${result.errors.length} avertissement(s)`);
+    } catch (e) {
+      errors.push(e.message || `${file.name} : erreur de lecture`);
+    }
+  }
+
+  if (!parsed.length) return setStatus("Aucun fichier n'a pu être lu.", true);
+
+  const reference = parsed[0].fields;
+  const good = parsed.filter(file => compatibleHeaders(reference, file.fields));
+  const bad = parsed.filter(file => !compatibleHeaders(reference, file.fields)).map(f => f.fileName);
+
+  allColumns = [...reference];
+  if (!allColumns.some(c => normalizeHeader(c) === normalizeHeader("Fichier source"))) {
+    allColumns.push("Fichier source");
+  }
+
+  good.forEach(file => {
+    file.rows.forEach(row => {
+      const merged = {};
+      reference.forEach(refCol => {
+        const actual = file.fields.find(c => normalizeHeader(c) === normalizeHeader(refCol));
+        merged[refCol] = actual ? row[actual] ?? "" : "";
+      });
+      merged["Fichier source"] = file.fileName;
+      allRows.push(merged);
+    });
+    sourceFiles.push(file.fileName);
+  });
+
+  importedCount = sourceFiles.length;
+
+  if (!allRows.length) return setStatus("Aucune ligne de données trouvée.", true);
+
+  prepareZones();
+  populateFilters();
+  populateFCControls();
+  populateVariables();
+  $("analysisArea").classList.remove("hidden");
+  updateAnalysis();
+  updateFCChart();
+
+  const messages = [`${allRows.length} ligne(s) importée(s) depuis ${importedCount} fichier(s) compatible(s).`];
+  if (bad.length) messages.push(`Fichiers ignorés (structure différente) : ${bad.join(", ")}.`);
+  if (errors.length) messages.push(errors.join(" ; "));
+
+  const missing = zoneDefinitions.filter(z => !z.complete).map(z => z.label);
+  if (missing.length) messages.push(`Colonnes sources manquantes pour : ${missing.join(", ")}.`);
+
+  setStatus(messages.join(" "));
+}
+
+function populateFilters() {
+  const player = findColumn(allColumns, ["Name"]);
+  const date = findColumn(allColumns, ["Date"]);
+  const period = findColumn(allColumns, ["Period Name"]);
+  const activity = findColumn(allColumns, ["Activity Name"]);
+  const position = findColumn(allColumns, ["Position Name"]);
+
+  selectOptions("filterPlayer","Tous les joueurs",allRows.map(r => player ? r[player] : ""));
+  selectOptions("period","Toutes les périodes",allRows.map(r => period ? r[period] : ""));
+  selectOptions("activity","Toutes les activités",allRows.map(r => activity ? r[activity] : ""));
+  selectOptions("position","Tous les postes",allRows.map(r => position ? r[position] : ""));
+  selectOptions("filterDate","Toutes les dates",allRows.map(r => date ? dateISO(r[date]) : ""));
+
+  [...$("filterDate").options].forEach(o => { if (o.value) o.textContent = displayDate(o.value); });
+}
+
+function populateFCControls() {
+  const player = findColumn(allColumns, ["Name"]);
+  const date = findColumn(allColumns, ["Date"]);
+
+  const oldDate = $("fcDate").value;
+  const oldPlayer = $("fcPlayer").value;
+
+  selectOptions("fcDate","Sélectionner une date",allRows.map(r => date ? dateISO(r[date]) : ""),oldDate);
+  selectOptions("fcPlayer","Sélectionner un joueur",allRows.map(r => player ? r[player] : ""),oldPlayer);
+
+  [...$("fcDate").options].forEach(o => { if (o.value) o.textContent = displayDate(o.value); });
+}
+
+function populateVariables() {
+  const excluded = new Set(["Name","Period Name","Activity Name","Date","Position Name","Fichier source"].map(normalizeHeader));
+
+  const variables = allColumns.filter(col => {
+    if (excluded.has(normalizeHeader(col))) return false;
+    return allRows.slice(0,100).some(r => parseNumber(r[col]) !== null);
+  });
+
+  zoneDefinitions.forEach(z => { if (!variables.includes(z.label)) variables.push(z.label); });
+  selectOptions("variable","Choisir une variable",variables);
+  if (variables.length) $("variable").value = variables[0];
+}
+
+function getFilteredRows() {
+  const player = findColumn(allColumns, ["Name"]);
+  const date = findColumn(allColumns, ["Date"]);
+  const period = findColumn(allColumns, ["Period Name"]);
+  const activity = findColumn(allColumns, ["Activity Name"]);
+  const position = findColumn(allColumns, ["Position Name"]);
+
+  return allRows.filter(r => {
+    if ($("filterPlayer").value && (!player || String(r[player]) !== $("filterPlayer").value)) return false;
+    if ($("filterDate").value && (!date || dateISO(r[date]) !== $("filterDate").value)) return false;
+    if ($("period").value && (!period || String(r[period]) !== $("period").value)) return false;
+    if ($("activity").value && (!activity || String(r[activity]) !== $("activity").value)) return false;
+    if ($("position").value && (!position || String(r[position]) !== $("position").value)) return false;
+    return true;
+  });
+}
+
+/*
+ * Agrège toutes les lignes d'un joueur pour une date donnée.
+ * Les valeurs manquantes ne sont pas remplacées par zéro.
+ */
+function aggregateByDate(rows) {
+  const dateCol = findColumn(allColumns, ["Date"]);
+  const map = new Map();
+
+  rows.forEach(row => {
+    const date = dateCol ? dateISO(row[dateCol]) : "";
+    if (!date) return;
+
+    if (!map.has(date)) {
+      map.set(date, {date, zones:zoneDefinitions.map(() => 0), valid:zoneDefinitions.map(() => true), rows:0});
+    }
+
+    const item = map.get(date);
+    item.rows++;
+
+    zoneDefinitions.forEach((zone,i) => {
+      const value = parseNumber(row[zone.label]);
+      if (value === null) item.valid[i] = false;
+      else item.zones[i] += value;
+    });
+  });
+
+  return [...map.values()]
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .map(item => ({
+      ...item,
+      zones:item.zones.map((value,i) => item.valid[i] ? value : null)
+    }));
+}
+
+function updateFCChart() {
+  const dateCol = findColumn(allColumns, ["Date"]);
+  const playerCol = findColumn(allColumns, ["Name"]);
+
+  const selectedDate = $("fcDate").value;
+  const selectedPlayer = $("fcPlayer").value;
+
+  $("fcTableBody").replaceChildren();
+
+  if (!dateCol || !playerCol || !selectedDate || !selectedPlayer) {
+    Plotly.purge("fcChart");
+    $("fcStatus").textContent = "Sélectionne une date et un joueur pour afficher la comparaison.";
+    $("fcTableBody").innerHTML = '<tr><td colspan="4">Sélectionne une date et un joueur.</td></tr>';
+    return;
+  }
+
+  // Historique indépendant des filtres généraux : on compare le joueur à ses propres séances.
+  const playerRows = allRows.filter(row => String(row[playerCol]) === selectedPlayer);
+  const sessions = aggregateByDate(playerRows);
+
+  const selectedSession = sessions.find(s => s.date === selectedDate);
+  if (!selectedSession) {
+    Plotly.purge("fcChart");
+    $("fcStatus").textContent = "Aucune séance trouvée pour cette date et ce joueur.";
+    $("fcTableBody").innerHTML = '<tr><td colspan="4">Aucune donnée.</td></tr>';
+    return;
+  }
+
+  // Exclusivement les dates antérieures à la séance sélectionnée.
+  const previousSessions = sessions
+    .filter(s => s.date < selectedDate)
+    .slice(-5);
+
+  // Moyenne zone par zone, sur les séances antérieures disponibles.
+  const averages = zoneDefinitions.map((zone,i) => {
+    const values = previousSessions.map(s => s.zones[i]);
+    if (values.some(v => v === null) || values.length === 0) return null;
+    return values.reduce((sum,v) => sum + v, 0) / values.length;
+  });
+
+  const currentValues = selectedSession.zones;
+  const labels = zoneDefinitions.map(z => z.label);
+
+  const traces = [
+    {
+      type:"bar",
+      name:"Moyenne des séances précédentes",
+      x:labels,
+      y:averages.map(v => v === null ? 0 : v),
+      marker:{
+        color:zoneColors,
+        opacity:0.23,
+        line:{color:zoneColors,width:1}
+      },
+      width:0.72,
+      customdata:averages,
+      hovertemplate:"<b>Moyenne historique</b><br>%{x}<br>Durée moyenne : %{customdata:.2f}<extra></extra>",
+      showlegend:true
+    },
+    {
+      type:"bar",
+      name:"Séance sélectionnée",
+      x:labels,
+      y:currentValues.map(v => v === null ? 0 : v),
+      marker:{
+        color:zoneColors,
+        opacity:1,
+        line:{color:"#ffffff",width:1}
+      },
+      width:0.43,
+      customdata:currentValues,
+      hovertemplate:"<b>Séance sélectionnée</b><br>%{x}<br>Durée : %{customdata:.2f}<extra></extra>",
+      showlegend:true
+    }
   ];
 
-  const zoneSourceCandidates = [
-    {
-      label: "Zone Récupération",
-      sources: [
-        ["Duration <50% FCmax"],
-        ["Duration 50-60% FCmax"],
-        ["Duration 60-70%FCmax", "Duration 60-70% FCmax"]
-      ]
+  const historicalCount = previousSessions.length;
+
+  Plotly.react("fcChart",traces,{
+    title:{
+      text:`${selectedPlayer} — séance du ${displayDate(selectedDate)}`,
+      x:0.03,
+      xanchor:"left"
     },
-    {
-      label: "Zone Moyenne Intensité",
-      sources: [
-        ["Duration 70-80%FCmax", "Duration 70-80% FCmax"],
-        ["Duration 80-85% FCmax"]
-      ]
+    barmode:"overlay",
+    xaxis:{
+      title:"",
+      tickangle:-12,
+      automargin:true
     },
-    {
-      label: "Zone Haute Intensité",
-      sources: [
-        ["Duration 85-90% FCmax"],
-        ["Duration 90-95% FCmax"]
-      ]
+    yaxis:{
+      title:"Durée cumulée (unité du CSV)",
+      rangemode:"tozero",
+      gridcolor:"#e6edf4"
     },
-    {
-      label: "Zone Très Haute Intensité",
-      sources: [
-        ["Duration 95-100% FCmax"]
-      ]
-    }
-  ];
+    legend:{orientation:"h",y:-0.34},
+    margin:{t:65,b:115,l:70,r:25},
+    paper_bgcolor:"white",
+    plot_bgcolor:"white",
+    font:{family:"Arial, sans-serif",color:"#243447"},
+    annotations:historicalCount === 0 ? [{
+      xref:"paper",yref:"paper",x:0.5,y:0.94,
+      text:"Pas de séance antérieure disponible",
+      showarrow:false,
+      bgcolor:"rgba(255,255,255,0.85)"
+    }] : []
+  },{responsive:true,displaylogo:false});
 
-  function normalizeHeader(value) {
-    return String(value ?? "")
-      .replace(/^\uFEFF/, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-  }
+  const historicalLabel = historicalCount === 5
+    ? "5 séances précédentes"
+    : `${historicalCount} séance(s) précédente(s) disponible(s)`;
 
-  function findColumn(columns, candidates) {
-    for (const candidate of candidates) {
-      const wanted = normalizeHeader(candidate);
-      const found = columns.find(col => normalizeHeader(col) === wanted);
-      if (found) return found;
-    }
-    return null;
-  }
+  $("fcStatus").textContent =
+    `Joueur : ${selectedPlayer} · Séance : ${displayDate(selectedDate)} · ` +
+    `Référence : ${historicalLabel}. La séance sélectionnée est exclue de la moyenne.`;
 
-  function parseNumber(value) {
-    if (value === null || value === undefined) return null;
-    if (typeof value === "number") {
-      return Number.isFinite(value) ? value : null;
-    }
+  zoneDefinitions.forEach((zone,i) => {
+    const tr = document.createElement("tr");
 
-    let text = String(value).trim();
-    if (!text || text === "-" || text.toLowerCase() === "na" ||
-        text.toLowerCase() === "n/a" || text.toLowerCase() === "null") {
-      return null;
-    }
-
-    text = text.replace(/\u00A0/g, "").replace(/\s/g, "");
-
-    // Prend en charge les décimales françaises et les séparateurs de milliers.
-    if (text.includes(",") && text.includes(".")) {
-      if (text.lastIndexOf(",") > text.lastIndexOf(".")) {
-        text = text.replace(/\./g, "").replace(",", ".");
-      } else {
-        text = text.replace(/,/g, "");
-      }
-    } else if (text.includes(",")) {
-      text = text.replace(",", ".");
-    }
-
-    const number = Number(text);
-    return Number.isFinite(number) ? number : null;
-  }
-
-  function dateISO(value) {
-    if (value === null || value === undefined || value === "") return "";
-
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      return value.toISOString().slice(0, 10);
-    }
-
-    const text = String(value).trim();
-    if (!text) return "";
-
-    // Formats courants : AAAA-MM-JJ, JJ/MM/AAAA, JJ-MM-AAAA.
-    let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-    if (match) {
-      return match[1] + "-" +
-        match[2].padStart(2, "0") + "-" +
-        match[3].padStart(2, "0");
-    }
-
-    match = text.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})/);
-    if (match) {
-      return match[3] + "-" +
-        match[2].padStart(2, "0") + "-" +
-        match[1].padStart(2, "0");
-    }
-
-    const parsed = new Date(text);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().slice(0, 10);
-    }
-
-    return text;
-  }
-
-  function displayDate(value) {
-    const iso = dateISO(value);
-    const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    return match ? `${match[3]}/${match[2]}/${match[1]}` : iso;
-  }
-
-  function setStatus(message, isError = false) {
-    const element = $("importStatus");
-    element.textContent = message;
-    element.classList.toggle("error", isError);
-  }
-
-  function uniqueValues(values) {
-    return [...new Set(values
-      .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
-      .map(v => String(v).trim()))]
-      .sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
-  }
-
-  function selectOptions(id, firstLabel, values, previousValue = null) {
-    const select = $(id);
-    select.replaceChildren();
-
-    const first = document.createElement("option");
-    first.value = "";
-    first.textContent = firstLabel;
-    select.appendChild(first);
-
-    uniqueValues(values).forEach(value => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      select.appendChild(option);
-    });
-
-    if (previousValue !== null &&
-        [...select.options].some(option => option.value === previousValue)) {
-      select.value = previousValue;
-    }
-  }
-
-  function resolveZoneDefinitions() {
-    zoneDefinitions = zoneSourceCandidates.map(zone => {
-      const resolved = zone.sources.map(candidates =>
-        findColumn(allColumns, candidates)
-      );
-
-      return {
-        label: zone.label,
-        sources: zone.sources,
-        resolved,
-        complete: resolved.every(Boolean)
-      };
-    });
-  }
-
-  function calculateZone(row, zone) {
-    // Si une colonne nécessaire n'existe pas, la zone n'est pas calculable.
-    if (!zone.complete) return null;
-
-    const values = zone.resolved.map(column => parseNumber(row[column]));
-
-    // Ne pas remplacer silencieusement une valeur manquante par zéro.
-    if (values.some(value => value === null)) return null;
-
-    return values.reduce((sum, value) => sum + value, 0);
-  }
-
-  function prepareZoneColumns() {
-    resolveZoneDefinitions();
-
-    allRows.forEach(row => {
-      zoneDefinitions.forEach(zone => {
-        row[zone.label] = calculateZone(row, zone);
-      });
-    });
-  }
-
-  function compatibleHeaders(reference, candidate) {
-    const a = reference.map(normalizeHeader).sort();
-    const b = candidate.map(normalizeHeader).sort();
-    return a.length === b.length && a.every((value, i) => value === b[i]);
-  }
-
-  function parseCSVFile(file) {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: "greedy",
-        dynamicTyping: false,
-        delimiter: "",
-        transformHeader: header => String(header).replace(/^\uFEFF/, "").trim(),
-        complete: results => {
-          const fields = (results.meta.fields || [])
-            .map(field => String(field).trim())
-            .filter(Boolean);
-
-          if (!fields.length) {
-            reject(new Error(`${file.name} : aucune colonne reconnue.`));
-            return;
-          }
-
-          const rows = results.data
-            .filter(row => row && Object.values(row).some(value =>
-              value !== null && value !== undefined && String(value).trim() !== ""
-            ))
-            .map(row => {
-              const clean = {};
-              fields.forEach(field => {
-                clean[field] = row[field] === undefined ? "" : row[field];
-              });
-              clean["Fichier source"] = file.name;
-              return clean;
-            });
-
-          resolve({
-            fileName: file.name,
-            fields,
-            rows,
-            errors: results.errors || []
-          });
-        },
-        error: error => reject(error)
-      });
-    });
-  }
-
-  async function importFiles(fileList) {
-    const files = [...fileList].filter(file =>
-      /\.csv$/i.test(file.name)
-    );
-
-    if (!files.length) {
-      setStatus("Aucun fichier CSV n'a été sélectionné.", true);
-      return;
-    }
-
-    setStatus(`Import en cours : ${files.length} fichier(s)…`);
-    $("analysisArea").classList.add("hidden");
-
-    allRows = [];
-    allColumns = [];
-    sourceFiles = [];
-    importedCount = 0;
-
-    const parsedFiles = [];
-    const errors = [];
-
-    for (const file of files) {
-      try {
-        const result = await parseCSVFile(file);
-        parsedFiles.push(result);
-
-        if (result.errors.length) {
-          errors.push(
-            `${file.name} : ${result.errors.length} avertissement(s) de lecture`
-          );
-        }
-      } catch (error) {
-        errors.push(error.message || `${file.name} : erreur de lecture`);
-      }
-    }
-
-    if (!parsedFiles.length) {
-      setStatus("Aucun fichier n'a pu être lu. Vérifie le format des CSV.", true);
-      return;
-    }
-
-    const reference = parsedFiles[0].fields;
-    const compatible = [];
-    const incompatible = [];
-
-    parsedFiles.forEach(file => {
-      if (compatibleHeaders(reference, file.fields)) {
-        compatible.push(file);
-      } else {
-        incompatible.push(file.fileName);
-      }
-    });
-
-    // Les colonnes de la première structure compatible servent de référence.
-    allColumns = [...reference];
-    if (!allColumns.some(col => normalizeHeader(col) === normalizeHeader("Fichier source"))) {
-      allColumns.push("Fichier source");
-    }
-
-    allRows = [];
-    compatible.forEach(file => {
-      file.rows.forEach(row => {
-        const merged = {};
-        reference.forEach(referenceColumn => {
-          const actual = file.fields.find(col =>
-            normalizeHeader(col) === normalizeHeader(referenceColumn)
-          );
-          merged[referenceColumn] = actual ? row[actual] : "";
-        });
-        merged["Fichier source"] = file.fileName;
-        allRows.push(merged);
-      });
-      sourceFiles.push(file.fileName);
-    });
-
-    importedCount = sourceFiles.length;
-
-    if (!allRows.length) {
-      setStatus("Les fichiers ont été lus, mais aucune ligne de données n'a été trouvée.", true);
-      return;
-    }
-
-    detectedDateColumn = findColumn(allColumns, ["Date"]);
-
-    prepareZoneColumns();
-    populateFilters();
-    populateFCControls();
-    populateVariables();
-
-    $("analysisArea").classList.remove("hidden");
-
-    updateAnalysis();
-
-    const messages = [
-      `${allRows.length} ligne(s) importée(s) depuis ${importedCount} fichier(s) compatible(s).`
+    const values = [
+      zone.label,
+      currentValues[i] === null ? "Non disponible" : fmt(currentValues[i]),
+      averages[i] === null ? "Non disponible" : fmt(averages[i]),
+      currentValues[i] === null || averages[i] === null
+        ? "—"
+        : `${currentValues[i] - averages[i] > 0 ? "+" : ""}${fmt(currentValues[i] - averages[i])}`
     ];
 
-    if (incompatible.length) {
-      messages.push(
-        `Fichiers ignorés car leur structure diffère : ${incompatible.join(", ")}.`
-      );
-    }
-
-    if (errors.length) messages.push(errors.join(" ; "));
-
-    const missingZones = zoneDefinitions
-      .filter(zone => !zone.complete)
-      .map(zone => zone.label);
-
-    if (missingZones.length) {
-      messages.push(
-        `Colonnes sources manquantes pour : ${missingZones.join(", ")}.`
-      );
-    }
-
-    setStatus(messages.join(" "));
-  }
-
-  function populateFilters() {
-    selectOptions(
-      "filterPlayer", "Tous les joueurs",
-      allRows.map(row => {
-        const col = findColumn(allColumns, ["Name"]);
-        return col ? row[col] : "";
-      })
-    );
-
-    selectOptions(
-      "period", "Toutes les périodes",
-      allRows.map(row => {
-        const col = findColumn(allColumns, ["Period Name"]);
-        return col ? row[col] : "";
-      })
-    );
-
-    selectOptions(
-      "activity", "Toutes les activités",
-      allRows.map(row => {
-        const col = findColumn(allColumns, ["Activity Name"]);
-        return col ? row[col] : "";
-      })
-    );
-
-    selectOptions(
-      "position", "Tous les postes",
-      allRows.map(row => {
-        const col = findColumn(allColumns, ["Position Name"]);
-        return col ? row[col] : "";
-      })
-    );
-
-    const dateCol = findColumn(allColumns, ["Date"]);
-    selectOptions(
-      "filterDate", "Toutes les dates",
-      allRows.map(row => dateCol ? dateISO(row[dateCol]) : "")
-    );
-
-    // Affiche les dates sous une forme française tout en conservant la valeur ISO.
-    [...$("filterDate").options].forEach(option => {
-      if (option.value) option.textContent = displayDate(option.value);
-    });
-  }
-
-  function populateFCControls() {
-    const dateCol = findColumn(allColumns, ["Date"]);
-    const playerCol = findColumn(allColumns, ["Name"]);
-
-    const previousDate = $("fcDate").value;
-    const previousPlayer = $("fcPlayer").value;
-
-    selectOptions(
-      "fcDate", "Toutes les dates",
-      allRows.map(row => dateCol ? dateISO(row[dateCol]) : ""),
-      previousDate
-    );
-
-    [...$("fcDate").options].forEach(option => {
-      if (option.value) option.textContent = displayDate(option.value);
-    });
-
-    selectOptions(
-      "fcPlayer", "Tous les joueurs",
-      allRows.map(row => playerCol ? row[playerCol] : ""),
-      previousPlayer
-    );
-  }
-
-  function populateVariables() {
-    const excluded = new Set([
-      "Name", "Period Name", "Activity Name", "Date",
-      "Position Name", "Fichier source"
-    ].map(normalizeHeader));
-
-    const numericColumns = allColumns.filter(column => {
-      if (excluded.has(normalizeHeader(column))) return false;
-
-      const sample = allRows
-        .slice(0, 100)
-        .map(row => parseNumber(row[column]))
-        .filter(value => value !== null);
-
-      return sample.length > 0;
-    });
-
-    // Ajoute les zones calculées à la liste des variables analysables.
-    zoneDefinitions.forEach(zone => {
-      if (!numericColumns.includes(zone.label)) numericColumns.push(zone.label);
-    });
-
-    selectOptions("variable", "Choisir une variable", numericColumns);
-
-    if (numericColumns.length) {
-      $("variable").value = numericColumns[0];
-    }
-  }
-
-  function getFilteredRows() {
-    const playerCol = findColumn(allColumns, ["Name"]);
-    const periodCol = findColumn(allColumns, ["Period Name"]);
-    const activityCol = findColumn(allColumns, ["Activity Name"]);
-    const positionCol = findColumn(allColumns, ["Position Name"]);
-    const dateCol = findColumn(allColumns, ["Date"]);
-
-    return allRows.filter(row => {
-      if ($("filterPlayer").value &&
-          (!playerCol || String(row[playerCol]) !== $("filterPlayer").value)) {
-        return false;
-      }
-
-      if ($("filterDate").value &&
-          (!dateCol || dateISO(row[dateCol]) !== $("filterDate").value)) {
-        return false;
-      }
-
-      if ($("period").value &&
-          (!periodCol || String(row[periodCol]) !== $("period").value)) {
-        return false;
-      }
-
-      if ($("activity").value &&
-          (!activityCol || String(row[activityCol]) !== $("activity").value)) {
-        return false;
-      }
-
-      if ($("position").value &&
-          (!positionCol || String(row[positionCol]) !== $("position").value)) {
-        return false;
-      }
-
-      return true;
-    });
-  }
-
-  function quantile(sorted, q) {
-    if (!sorted.length) return null;
-
-    const position = (sorted.length - 1) * q;
-    const lower = Math.floor(position);
-    const upper = Math.ceil(position);
-
-    if (lower === upper) return sorted[lower];
-
-    return sorted[lower] +
-      (sorted[upper] - sorted[lower]) * (position - lower);
-  }
-
-  function formatNumber(value, decimals = 2) {
-    if (value === null || value === undefined || !Number.isFinite(value)) {
-      return "—";
-    }
-
-    return value.toLocaleString("fr-FR", {
-      maximumFractionDigits: decimals
-    });
-  }
-
-  function fillStats(rows) {
-    const variable = $("variable").value;
-    const values = rows
-      .map(row => parseNumber(row[variable]))
-      .filter(value => value !== null);
-
-    const body = $("statsBody");
-    body.replaceChildren();
-
-    if (!values.length) {
-      body.innerHTML = '<tr><td colspan="6">Aucune valeur numérique disponible.</td></tr>';
-      return;
-    }
-
-    const sorted = [...values].sort((a, b) => a - b);
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const median = quantile(sorted, 0.5);
-    const variance = values.reduce(
-      (sum, value) => sum + Math.pow(value - mean, 2), 0
-    ) / values.length;
-    const sd = Math.sqrt(variance);
-
-    const tr = document.createElement("tr");
-    [
-      values.length,
-      formatNumber(mean),
-      formatNumber(median),
-      formatNumber(sorted[0]),
-      formatNumber(sorted[sorted.length - 1]),
-      formatNumber(sd)
-    ].forEach(value => {
+    values.forEach(value => {
       const td = document.createElement("td");
       td.textContent = value;
       tr.appendChild(td);
     });
 
+    $("fcTableBody").appendChild(tr);
+  });
+}
+
+function quantile(sorted,q) {
+  if (!sorted.length) return null;
+  const pos = (sorted.length - 1) * q;
+  const low = Math.floor(pos), high = Math.ceil(pos);
+  return low === high ? sorted[low] : sorted[low] + (sorted[high]-sorted[low])*(pos-low);
+}
+
+function fillStats(rows) {
+  const variable = $("variable").value;
+  const values = rows.map(r => parseNumber(r[variable])).filter(v => v !== null);
+  const body = $("statsBody");
+  body.replaceChildren();
+
+  if (!values.length) {
+    body.innerHTML = '<tr><td colspan="6">Aucune valeur numérique disponible.</td></tr>';
+    return;
+  }
+
+  const sorted = [...values].sort((a,b) => a-b);
+  const mean = values.reduce((s,v) => s+v,0)/values.length;
+  const variance = values.reduce((s,v) => s+(v-mean)**2,0)/values.length;
+
+  const tr = document.createElement("tr");
+  [values.length,fmt(mean),fmt(quantile(sorted,.5)),fmt(sorted[0]),fmt(sorted.at(-1)),fmt(Math.sqrt(variance))]
+    .forEach(v => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+  body.appendChild(tr);
+}
+
+function fillZoneStats(rows) {
+  const body = $("zoneSummary");
+  body.replaceChildren();
+
+  const totals = zoneDefinitions.map(zone => {
+    const values = rows.map(r => parseNumber(r[zone.label])).filter(v => v !== null);
+    return {label:zone.label,total:values.length ? values.reduce((s,v) => s+v,0) : null};
+  });
+
+  const sum = totals.reduce((s,item) => s+(item.total ?? 0),0);
+
+  totals.forEach(item => {
+    const tr = document.createElement("tr");
+    const percentage = item.total === null || sum === 0 ? "—" : `${fmt(item.total/sum*100,1)} %`;
+    [item.label,item.total === null ? "Non disponible" : fmt(item.total),percentage].forEach(v => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      tr.appendChild(td);
+    });
     body.appendChild(tr);
-  }
+  });
+}
 
-  function fillZoneStats(rows) {
-    const body = $("zoneSummary");
-    body.replaceChildren();
+function fillPreview(rows) {
+  const table = $("previewTable");
+  const head = table.querySelector("thead");
+  const body = table.querySelector("tbody");
+  head.replaceChildren();
+  body.replaceChildren();
 
-    const totals = zoneDefinitions.map(zone => {
-      const values = rows
-        .map(row => parseNumber(row[zone.label]))
-        .filter(value => value !== null);
+  const columns = [...new Set([...allColumns,...zoneDefinitions.map(z => z.label)])];
+  const hr = document.createElement("tr");
 
-      return {
-        label: zone.label,
-        total: values.length
-          ? values.reduce((sum, value) => sum + value, 0)
-          : null
-      };
+  columns.forEach(col => {
+    const th = document.createElement("th");
+    th.textContent = col;
+    hr.appendChild(th);
+  });
+  head.appendChild(hr);
+
+  rows.slice(0,100).forEach(row => {
+    const tr = document.createElement("tr");
+    columns.forEach(col => {
+      const td = document.createElement("td");
+      td.textContent = row[col] === null || row[col] === undefined ? "" :
+        typeof row[col] === "number" ? fmt(row[col]) : String(row[col]);
+      tr.appendChild(td);
     });
+    body.appendChild(tr);
+  });
 
-    const totalOfZones = totals.reduce(
-      (sum, item) => sum + (item.total ?? 0), 0
-    );
+  $("previewStatus").textContent = `${Math.min(rows.length,100)} ligne(s) affichée(s) sur ${rows.length}.`;
+}
 
-    totals.forEach(item => {
-      const tr = document.createElement("tr");
+function drawVariableChart(rows) {
+  const variable = $("variable").value;
+  if (!variable) return;
 
-      const name = document.createElement("td");
-      name.textContent = item.label;
-
-      const duration = document.createElement("td");
-      duration.textContent = item.total === null
-        ? "Non disponible"
-        : formatNumber(item.total);
-
-      const percentage = document.createElement("td");
-      percentage.textContent =
-        item.total === null || totalOfZones === 0
-          ? "—"
-          : `${formatNumber(item.total / totalOfZones * 100, 1)} %`;
-
-      tr.append(name, duration, percentage);
-      body.appendChild(tr);
-    });
-  }
-
-  function fillPreview(rows) {
-    const table = $("previewTable");
-    const thead = table.querySelector("thead");
-    const tbody = table.querySelector("tbody");
-
-    thead.replaceChildren();
-    tbody.replaceChildren();
-
-    const previewColumns = [
-      ...allColumns,
-      ...zoneDefinitions.map(zone => zone.label)
-    ].filter((column, index, array) => array.indexOf(column) === index);
-
-    const headRow = document.createElement("tr");
-    previewColumns.forEach(column => {
-      const th = document.createElement("th");
-      th.textContent = column;
-      headRow.appendChild(th);
-    });
-    thead.appendChild(headRow);
-
-    const limit = Math.min(rows.length, 100);
-
-    rows.slice(0, limit).forEach(row => {
-      const tr = document.createElement("tr");
-
-      previewColumns.forEach(column => {
-        const td = document.createElement("td");
-        const value = row[column];
-
-        td.textContent = value === null || value === undefined
-          ? ""
-          : typeof value === "number"
-            ? formatNumber(value)
-            : String(value);
-
-        tr.appendChild(td);
-      });
-
-      tbody.appendChild(tr);
-    });
-
-    $("previewStatus").textContent =
-      `${limit} ligne(s) affichée(s) sur ${rows.length}. L'export inclut toutes les lignes filtrées.`;
-  }
-
-  function drawVariableChart(rows) {
-    const variable = $("variable").value;
-
-    if (!variable || typeof Plotly === "undefined") return;
-
-    if ($("chartType").value === "box") {
-      const playerCol = findColumn(allColumns, ["Name"]);
-
-      if (!playerCol) {
-        Plotly.purge("variableChart");
-        return;
-      }
-
-      const groups = {};
-      rows.forEach(row => {
-        const player = String(row[playerCol] ?? "Inconnu");
-        const value = parseNumber(row[variable]);
-
-        if (value === null) return;
-        if (!groups[player]) groups[player] = [];
-        groups[player].push(value);
-      });
-
-      const traces = Object.entries(groups).map(([player, values]) => ({
-        type: "box",
-        name: player,
-        y: values,
-        boxpoints: false
-      }));
-
-      Plotly.react("variableChart", traces, {
-        title: `${variable} — comparaison par joueur`,
-        yaxis: { title: variable },
-        margin: { t: 55, b: 90, l: 65, r: 25 },
-        paper_bgcolor: "white",
-        plot_bgcolor: "white"
-      }, { responsive: true, displaylogo: false });
-
-      return;
-    }
-
-    const values = rows
-      .map(row => parseNumber(row[variable]))
-      .filter(value => value !== null);
-
-    if (!values.length) {
+  if ($("chartType").value === "box") {
+    const playerCol = findColumn(allColumns, ["Name"]);
+    if (!playerCol) {
       Plotly.purge("variableChart");
       return;
     }
 
-    Plotly.react("variableChart", [{
-      type: "histogram",
-      x: values,
-      marker: { color: "#206a8a" }
-    }], {
-      title: `Distribution de ${variable}`,
-      xaxis: { title: variable },
-      yaxis: { title: "Nombre de lignes" },
-      margin: { t: 55, b: 65, l: 65, r: 25 },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white"
-    }, { responsive: true, displaylogo: false });
-  }
-
-  function updateFCChart() {
-    if (typeof Plotly === "undefined") return;
-
-    const dateCol = findColumn(allColumns, ["Date"]);
-    const playerCol = findColumn(allColumns, ["Name"]);
-    const selectedDate = $("fcDate").value;
-    const selectedPlayer = $("fcPlayer").value;
-    const display = $("fcDisplay").value;
-
-    if (!dateCol) {
-      $("fcStatus").textContent =
-        "Impossible de trouver la colonne Date dans les fichiers importés.";
-      Plotly.purge("fcChart");
-      return;
-    }
-
-    const rows = allRows.filter(row => {
-      if (selectedDate && dateISO(row[dateCol]) !== selectedDate) return false;
-
-      if (selectedPlayer &&
-          (!playerCol || String(row[playerCol]) !== selectedPlayer)) {
-        return false;
-      }
-
-      // Les filtres généraux de période, activité et poste s'appliquent aussi.
-      if ($("period").value) {
-        const col = findColumn(allColumns, ["Period Name"]);
-        if (!col || String(row[col]) !== $("period").value) return false;
-      }
-
-      if ($("activity").value) {
-        const col = findColumn(allColumns, ["Activity Name"]);
-        if (!col || String(row[col]) !== $("activity").value) return false;
-      }
-
-      if ($("position").value) {
-        const col = findColumn(allColumns, ["Position Name"]);
-        if (!col || String(row[col]) !== $("position").value) return false;
-      }
-
-      return true;
+    const groups = {};
+    rows.forEach(row => {
+      const name = String(row[playerCol] ?? "Inconnu");
+      const value = parseNumber(row[variable]);
+      if (value === null) return;
+      (groups[name] ||= []).push(value);
     });
 
-    const totals = zoneDefinitions.map(zone => {
-      const values = rows
-        .map(row => parseNumber(row[zone.label]))
-        .filter(value => value !== null);
-
-      return values.length
-        ? values.reduce((sum, value) => sum + value, 0)
-        : 0;
-    });
-
-    const total = totals.reduce((sum, value) => sum + value, 0);
-
-    if (!rows.length || total <= 0) {
-      $("fcStatus").textContent =
-        "Aucune durée exploitable pour cette sélection. Vérifie les dates et les colonnes sources.";
-      Plotly.purge("fcChart");
-      return;
-    }
-
-    const traces = zoneDefinitions.map((zone, i) => {
-      const percentage = total ? totals[i] / total * 100 : 0;
-      const value = display === "percentage" ? percentage : totals[i];
-
-      return {
-        type: "bar",
-        orientation: "h",
-        name: zone.label,
-        x: [value],
-        // Même catégorie pour les quatre traces : une seule barre empilée.
-        y: ["Répartition"],
-        marker: { color: zoneColors[i] },
-        customdata: [[totals[i], percentage]],
-        hovertemplate:
-          `<b>${zone.label}</b><br>` +
-          `Durée cumulée : %{customdata[0]:.2f}<br>` +
-          `Part du total : %{customdata[1]:.1f}%` +
-          `<extra></extra>`
-      };
-    });
-
-    Plotly.react("fcChart", traces, {
-      title: display === "percentage"
-        ? "Répartition relative des zones FC"
-        : "Temps cumulé dans les zones FC",
-      barmode: "stack",
-      barnorm: "",
-      xaxis: {
-        title: display === "percentage"
-          ? "Part du total (%)"
-          : "Durée cumulée (unité des CSV)",
-        rangemode: "tozero",
-        range: display === "percentage" ? [0, 100] : undefined
-      },
-      yaxis: {
-        visible: false,
-        fixedrange: true
-      },
-      margin: { t: 60, r: 25, b: 75, l: 25 },
-      showlegend: true,
-      legend: { orientation: "h", y: -0.3 },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white"
-    }, { responsive: true, displaylogo: false });
-
-    $("fcStatus").textContent =
-      `${rows.length} ligne(s) prise(s) en compte. Durée cumulée des quatre zones : ` +
-      `${formatNumber(total)} (unité des CSV).`;
+    Plotly.react("variableChart",Object.entries(groups).map(([name,values]) => ({
+      type:"box",name,y:values,boxpoints:false
+    })),{
+      title:`${variable} — comparaison par joueur`,
+      yaxis:{title:variable},
+      margin:{t:55,b:100,l:65,r:25},
+      paper_bgcolor:"white",plot_bgcolor:"white"
+    },{responsive:true,displaylogo:false});
+    return;
   }
 
-  function updateAnalysis() {
-    const rows = getFilteredRows();
-
-    $("rowCount").textContent = rows.length.toLocaleString("fr-FR");
-
-    const playerCol = findColumn(allColumns, ["Name"]);
-    const dateCol = findColumn(allColumns, ["Date"]);
-
-    $("playerCount").textContent = playerCol
-      ? uniqueValues(rows.map(row => row[playerCol])).length
-          .toLocaleString("fr-FR")
-      : "—";
-
-    $("fileCount").textContent = importedCount.toLocaleString("fr-FR");
-
-    $("dateCount").textContent = dateCol
-      ? uniqueValues(rows.map(row => dateISO(row[dateCol]))).length
-          .toLocaleString("fr-FR")
-      : "—";
-
-    fillZoneStats(rows);
-    fillStats(rows);
-    fillPreview(rows);
-    drawVariableChart(rows);
-    updateFCChart();
-  }
-
-  function csvEscape(value) {
-    if (value === null || value === undefined) return "";
-
-    const text = String(value);
-    if (/[",\r\n;]/.test(text)) {
-      return '"' + text.replace(/"/g, '""') + '"';
-    }
-
-    return text;
-  }
-
-  function downloadCSV(rows, columns, fileName) {
-    const csv = [
-      columns.map(csvEscape).join(";"),
-      ...rows.map(row => columns.map(column => {
-        const value = row[column];
-        return csvEscape(
-          typeof value === "number" ? String(value).replace(".", ",") : value
-        );
-      }).join(";"))
-    ].join("\r\n");
-
-    const blob = new Blob(["\uFEFF", csv], {
-      type: "text/csv;charset=utf-8;"
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function exportFiltered() {
-    const rows = getFilteredRows();
-    const columns = [
-      ...allColumns,
-      ...zoneDefinitions.map(zone => zone.label)
-    ].filter((column, index, array) => array.indexOf(column) === index);
-
-    downloadCSV(rows, columns, "donnees_filtrees.csv");
-  }
-
-  function exportStats() {
-    const rows = getFilteredRows();
-    const variable = $("variable").value;
-    const values = rows
-      .map(row => parseNumber(row[variable]))
-      .filter(value => value !== null);
-
-    if (!values.length) {
-      alert("Aucune valeur numérique disponible pour cette variable.");
-      return;
-    }
-
-    const sorted = [...values].sort((a, b) => a - b);
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const variance = values.reduce(
-      (sum, value) => sum + Math.pow(value - mean, 2), 0
-    ) / values.length;
-
-    const statsRows = [
-      { Variable: variable, Statistique: "Nombre de valeurs", Valeur: values.length },
-      { Variable: variable, Statistique: "Moyenne", Valeur: mean },
-      { Variable: variable, Statistique: "Médiane", Valeur: quantile(sorted, 0.5) },
-      { Variable: variable, Statistique: "Minimum", Valeur: sorted[0] },
-      { Variable: variable, Statistique: "Maximum", Valeur: sorted[sorted.length - 1] },
-      { Variable: variable, Statistique: "Écart-type", Valeur: Math.sqrt(variance) }
-    ];
-
-    downloadCSV(
-      statsRows,
-      ["Variable", "Statistique", "Valeur"],
-      "statistiques.csv"
-    );
-  }
-
-  function resetFilters() {
-    [
-      "filterPlayer", "filterDate", "period", "activity", "position"
-    ].forEach(id => {
-      $(id).value = "";
-    });
-
-    updateAnalysis();
-  }
-
-  function clearAll() {
-    allRows = [];
-    allColumns = [];
-    sourceFiles = [];
-    importedCount = 0;
-    detectedDateColumn = null;
-    zoneDefinitions = [];
-
-    $("csvFiles").value = "";
-    $("folder").value = "";
-    $("analysisArea").classList.add("hidden");
-
-    setStatus("Données réinitialisées. Sélectionne de nouveaux fichiers CSV.");
-    Plotly.purge("fcChart");
+  const values = rows.map(r => parseNumber(r[variable])).filter(v => v !== null);
+  if (!values.length) {
     Plotly.purge("variableChart");
+    return;
   }
 
-  $("csvFiles").addEventListener("change", event => {
-    importFiles(event.target.files);
-  });
+  Plotly.react("variableChart",[{
+    type:"histogram",x:values,marker:{color:"#206a8a"}
+  }],{
+    title:`Distribution de ${variable}`,
+    xaxis:{title:variable},
+    yaxis:{title:"Nombre de lignes"},
+    margin:{t:55,b:65,l:65,r:25},
+    paper_bgcolor:"white",plot_bgcolor:"white"
+  },{responsive:true,displaylogo:false});
+}
 
-  $("folder").addEventListener("change", event => {
-    importFiles(event.target.files);
-  });
+function updateAnalysis() {
+  const rows = getFilteredRows();
+  const playerCol = findColumn(allColumns,["Name"]);
+  const dateCol = findColumn(allColumns,["Date"]);
 
-  $("clearData").addEventListener("click", clearAll);
-  $("resetFilters").addEventListener("click", resetFilters);
-  $("exportFiltered").addEventListener("click", exportFiltered);
-  $("exportStats").addEventListener("click", exportStats);
+  $("rowCount").textContent = rows.length.toLocaleString("fr-FR");
+  $("playerCount").textContent = playerCol
+    ? uniqueValues(rows.map(r => r[playerCol])).length.toLocaleString("fr-FR") : "—";
+  $("fileCount").textContent = importedCount.toLocaleString("fr-FR");
+  $("dateCount").textContent = dateCol
+    ? uniqueValues(rows.map(r => dateISO(r[dateCol]))).length.toLocaleString("fr-FR") : "—";
 
-  [
-    "filterPlayer", "filterDate", "period", "activity", "position",
-    "variable", "chartType"
-  ].forEach(id => {
-    $(id).addEventListener("change", updateAnalysis);
-  });
+  fillZoneStats(rows);
+  fillStats(rows);
+  fillPreview(rows);
+  drawVariableChart(rows);
+}
 
-  ["fcDate", "fcPlayer", "fcDisplay"].forEach(id => {
-    $(id).addEventListener("change", updateFCChart);
-  });
+function csvEscape(value) {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  return /[",;\r\n]/.test(text) ? '"' + text.replace(/"/g,'""') + '"' : text;
+}
+
+function downloadCSV(rows,columns,fileName) {
+  const csv = [
+    columns.map(csvEscape).join(";"),
+    ...rows.map(row => columns.map(col => {
+      const value = row[col];
+      return csvEscape(typeof value === "number" ? String(value).replace(".",",") : value);
+    }).join(";"))
+  ].join("\r\n");
+
+  const blob = new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportFiltered() {
+  const columns = [...new Set([...allColumns,...zoneDefinitions.map(z => z.label)])];
+  downloadCSV(getFilteredRows(),columns,"donnees_filtrees.csv");
+}
+
+function exportStats() {
+  const rows = getFilteredRows();
+  const variable = $("variable").value;
+  const values = rows.map(r => parseNumber(r[variable])).filter(v => v !== null);
+  if (!values.length) return alert("Aucune valeur numérique disponible.");
+
+  const sorted = [...values].sort((a,b) => a-b);
+  const mean = values.reduce((s,v) => s+v,0)/values.length;
+  const variance = values.reduce((s,v) => s+(v-mean)**2,0)/values.length;
+
+  const stats = [
+    {Variable:variable,Statistique:"Nombre",Valeur:values.length},
+    {Variable:variable,Statistique:"Moyenne",Valeur:mean},
+    {Variable:variable,Statistique:"Médiane",Valeur:quantile(sorted,.5)},
+    {Variable:variable,Statistique:"Minimum",Valeur:sorted[0]},
+    {Variable:variable,Statistique:"Maximum",Valeur:sorted.at(-1)},
+    {Variable:variable,Statistique:"Écart-type",Valeur:Math.sqrt(variance)}
+  ];
+
+  downloadCSV(stats,["Variable","Statistique","Valeur"],"statistiques.csv");
+}
+
+function resetFilters() {
+  ["filterPlayer","filterDate","period","activity","position"].forEach(id => $(id).value = "");
+  updateAnalysis();
+}
+
+function clearAll() {
+  allRows = [];
+  allColumns = [];
+  sourceFiles = [];
+  importedCount = 0;
+  zoneDefinitions = [];
+  $("csvFiles").value = "";
+  $("folder").value = "";
+  $("analysisArea").classList.add("hidden");
+  Plotly.purge("fcChart");
+  Plotly.purge("variableChart");
+  setStatus("Données réinitialisées. Sélectionne de nouveaux fichiers CSV.");
+}
+
+$("csvFiles").addEventListener("change",e => importFiles(e.target.files));
+$("folder").addEventListener("change",e => importFiles(e.target.files));
+$("clearData").addEventListener("click",clearAll);
+$("resetFilters").addEventListener("click",resetFilters);
+$("exportFiltered").addEventListener("click",exportFiltered);
+$("exportStats").addEventListener("click",exportStats);
+
+["filterPlayer","filterDate","period","activity","position","variable","chartType"]
+  .forEach(id => $(id).addEventListener("change",updateAnalysis));
+
+["fcDate","fcPlayer"].forEach(id => $(id).addEventListener("change",updateFCChart));
 </script>
 </body>
 </html>
