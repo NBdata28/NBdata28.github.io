@@ -301,5 +301,38 @@
     });
   }
 </script>
+<script>
+  // Le JavaScript existant de ton application...
+
+  function nombre(valeur) {
+    if (valeur === null || valeur === undefined || valeur === "") {
+      return 0;
+    }
+
+    const n = Number(String(valeur).trim().replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function calculerZonesFC(ligne) {
+    return {
+      "Zone Récupération":
+        nombre(ligne["Duration <50% FCmax"]) +
+        nombre(ligne["Duration 50-60% FCmax"]) +
+        nombre(ligne["Duration 60-70%FCmax"]),
+
+      "Zone Moyenne Intensité":
+        nombre(ligne["Duration 70-80%FCmax"]) +
+        nombre(ligne["Duration 80-85% FCmax"]),
+
+      "Zone Haute Intensité":
+        nombre(ligne["Duration 85-90% FCmax"]) +
+        nombre(ligne["Duration 90-95% FCmax"]),
+
+      "Zone Très Haute Intensité":
+        nombre(ligne["Duration 95-100% FCmax"])
+    };
+  }
+</script>  
+
 </body>
 </html>
