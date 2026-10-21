@@ -620,6 +620,7 @@ function aggregateByDate(rows) {
     }));
 }
 
+
 function updateFCChart() {
   const dateCol = findColumn(allColumns, ["Date"]);
   const playerCol = findColumn(allColumns, ["Name"]);
@@ -631,124 +632,169 @@ function updateFCChart() {
 
   if (!dateCol || !playerCol || !selectedDate || !selectedPlayer) {
     Plotly.purge("fcChart");
-    $("fcStatus").textContent = "Sélectionne une date et un joueur pour afficher la comparaison.";
-    $("fcTableBody").innerHTML = '<tr><td colspan="4">Sélectionne une date et un joueur.</td></tr>';
+    $("fcStatus").textContent =
+      "Sélectionne une date et un joueur pour afficher la comparaison.";
+    $("fcTableBody").innerHTML =
+      '<tr><td colspan="4">Sélectionne une date et un joueur.</td></tr>';
     return;
   }
 
-  // Historique indépendant des filtres généraux : on compare le joueur à ses propres séances.
-  const playerRows = allRows.filter(row => String(row[playerCol]) === selectedPlayer);
-  const sessions = aggregateByDate(playerRows);
+  // Récupération de toutes les séances du joueur.
+  const playerRows = allRows.filter(
+    row => String(row[playerCol]) === selectedPlayer
+  );
 
-  const selectedSession = sessions.find(s => s.date === selectedDate);
+  const sessions = aggregateByDate(playerRows);
+  const selectedSession = sessions.find(
+    session => session.date === selectedDate
+  );
+
   if (!selectedSession) {
     Plotly.purge("fcChart");
-    $("fcStatus").textContent = "Aucune séance trouvée pour cette date et ce joueur.";
-    $("fcTableBody").innerHTML = '<tr><td colspan="4">Aucune donnée.</td></tr>';
+    $("fcStatus").textContent =
+      "Aucune séance trouvée pour cette date et ce joueur.";
+    $("fcTableBody").innerHTML =
+      '<tr><td colspan="4">Aucune donnée.</td></tr>';
     return;
   }
 
-  // Exclusivement les dates antérieures à la séance sélectionnée.
+  // Les cinq séances strictement antérieures à la séance sélectionnée.
   const previousSessions = sessions
-    .filter(s => s.date < selectedDate)
+    .filter(session => session.date < selectedDate)
     .slice(-5);
 
-  // Moyenne zone par zone, sur les séances antérieures disponibles.
-  const averages = zoneDefinitions.map((zone,i) => {
-    const values = previousSessions.map(s => s.zones[i]);
-    if (values.some(v => v === null) || values.length === 0) return null;
-    return values.reduce((sum,v) => sum + v, 0) / values.length;
+  // Moyenne calculée séparément pour chaque zone.
+  const averages = zoneDefinitions.map((zone, index) => {
+    const values = previousSessions.map(
+      session => session.zones[index]
+    );
+
+    if (!values.length || values.some(value => value === null)) {
+      return null;
+    }
+
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
   });
 
+  const labels = zoneDefinitions.map(zone => zone.label);
   const currentValues = selectedSession.zones;
-  const labels = zoneDefinitions.map(z => z.label);
+
+  // Couleurs de la séance actuelle.
+  const currentColors = zoneColors;
+
+  // Moyenne historique en gris clair pour mieux distinguer les deux séries.
+  const averageColors = [
+    "#C5D0DC",
+    "#C5D0DC",
+    "#C5D0DC",
+    "#C5D0DC"
+  ];
 
   const traces = [
     {
-      type:"bar",
-      name:"Moyenne des séances précédentes",
-      x:labels,
-      y:averages.map(v => v === null ? 0 : v),
-      marker:{
-        color:zoneColors,
-        opacity:0.23,
-        line:{color:zoneColors,width:1}
+      type: "bar",
+      name: "Séance sélectionnée",
+      x: labels,
+      y: currentValues,
+      marker: {
+        color: currentColors,
+        line: { color: "#ffffff", width: 1 }
       },
-      width:0.72,
-      customdata:averages,
-      hovertemplate:"<b>Moyenne historique</b><br>%{x}<br>Durée moyenne : %{customdata:.2f}<extra></extra>",
-      showlegend:true
+      text: currentValues.map(value =>
+        value === null ? "" : fmt(value)
+      ),
+      textposition: "outside",
+      cliponaxis: false,
+      hovertemplate:
+        "<b>Séance sélectionnée</b><br>" +
+        "%{x}<br>Durée : %{y:.2f}<extra></extra>"
     },
     {
-      type:"bar",
-      name:"Séance sélectionnée",
-      x:labels,
-      y:currentValues.map(v => v === null ? 0 : v),
-      marker:{
-        color:zoneColors,
-        opacity:1,
-        line:{color:"#ffffff",width:1}
+      type: "bar",
+      name: "Moyenne des 5 séances précédentes",
+      x: labels,
+      y: averages,
+      marker: {
+        color: averageColors,
+        line: { color: "#94A3B8", width: 1 }
       },
-      width:0.43,
-      customdata:currentValues,
-      hovertemplate:"<b>Séance sélectionnée</b><br>%{x}<br>Durée : %{customdata:.2f}<extra></extra>",
-      showlegend:true
+      text: averages.map(value =>
+        value === null ? "" : fmt(value)
+      ),
+      textposition: "outside",
+      cliponaxis: false,
+      hovertemplate:
+        "<b>Moyenne historique</b><br>" +
+        "%{x}<br>Durée moyenne : %{y:.2f}<extra></extra>"
     }
   ];
 
-  const historicalCount = previousSessions.length;
+  Plotly.react("fcChart", traces, {
+    title: {
+      text: `${selectedPlayer} — séance du ${displayDate(selectedDate)}`,
+      x: 0.02,
+      xanchor: "left"
+    },
+    barmode: "group",
+    bargap: 0.25,
+    bargroupgap: 0.12,
+    xaxis: {
+      title: "",
+      tickangle: -12,
+      automargin: true
+    },
+    yaxis: {
+      title: "Durée cumulée (unité des CSV)",
+      rangemode: "tozero",
+      gridcolor: "#E6EDF4"
+    },
+    legend: {
+      orientation: "h",
+      y: -0.38,
+      x: 0
+    },
+    margin: { t: 70, b: 125, l: 75, r: 30 },
+    paper_bgcolor: "white",
+    plot_bgcolor: "white",
+    font: {
+      family: "Arial, sans-serif",
+      color: "#243447"
+    }
+  }, {
+    responsive: true,
+    displaylogo: false
+  });
 
-  Plotly.react("fcChart",traces,{
-    title:{
-      text:`${selectedPlayer} — séance du ${displayDate(selectedDate)}`,
-      x:0.03,
-      xanchor:"left"
-    },
-    barmode:"overlay",
-    xaxis:{
-      title:"",
-      tickangle:-12,
-      automargin:true
-    },
-    yaxis:{
-      title:"Durée cumulée (unité du CSV)",
-      rangemode:"tozero",
-      gridcolor:"#e6edf4"
-    },
-    legend:{orientation:"h",y:-0.34},
-    margin:{t:65,b:115,l:70,r:25},
-    paper_bgcolor:"white",
-    plot_bgcolor:"white",
-    font:{family:"Arial, sans-serif",color:"#243447"},
-    annotations:historicalCount === 0 ? [{
-      xref:"paper",yref:"paper",x:0.5,y:0.94,
-      text:"Pas de séance antérieure disponible",
-      showarrow:false,
-      bgcolor:"rgba(255,255,255,0.85)"
-    }] : []
-  },{responsive:true,displaylogo:false});
-
-  const historicalLabel = historicalCount === 5
+  const historicalLabel = previousSessions.length === 5
     ? "5 séances précédentes"
-    : `${historicalCount} séance(s) précédente(s) disponible(s)`;
+    : `${previousSessions.length} séance(s) précédente(s) disponible(s)`;
 
   $("fcStatus").textContent =
     `Joueur : ${selectedPlayer} · Séance : ${displayDate(selectedDate)} · ` +
     `Référence : ${historicalLabel}. La séance sélectionnée est exclue de la moyenne.`;
 
-  zoneDefinitions.forEach((zone,i) => {
+  // Mise à jour du tableau de comparaison.
+  zoneDefinitions.forEach((zone, index) => {
     const tr = document.createElement("tr");
 
-    const values = [
+    const current = currentValues[index];
+    const average = averages[index];
+
+    const difference =
+      current === null || average === null
+        ? null
+        : current - average;
+
+    const cells = [
       zone.label,
-      currentValues[i] === null ? "Non disponible" : fmt(currentValues[i]),
-      averages[i] === null ? "Non disponible" : fmt(averages[i]),
-      currentValues[i] === null || averages[i] === null
+      current === null ? "Non disponible" : fmt(current),
+      average === null ? "Non disponible" : fmt(average),
+      difference === null
         ? "—"
-        : `${currentValues[i] - averages[i] > 0 ? "+" : ""}${fmt(currentValues[i] - averages[i])}`
+        : `${difference > 0 ? "+" : ""}${fmt(difference)}`
     ];
 
-    values.forEach(value => {
+    cells.forEach(value => {
       const td = document.createElement("td");
       td.textContent = value;
       tr.appendChild(td);
@@ -757,6 +803,7 @@ function updateFCChart() {
     $("fcTableBody").appendChild(tr);
   });
 }
+
 
 function quantile(sorted,q) {
   if (!sorted.length) return null;
