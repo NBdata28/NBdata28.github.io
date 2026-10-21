@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NB Data Explorer</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #202938;
+      background: #f6f8fb;
+    }
+    h1 { margin-bottom: 6px; }
+    .muted { color: #667085; }
+    .panel {
+      background: white;
+      border: 1px solid #e1e6ee;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 18px 0;
+    }
+    button, select, input {
+      font: inherit;
+      padding: 9px;
+      max-width: 100%;
+    }
+    button {
+      cursor: pointer;
+      border-radius: 8px;
+      border: 0;
+      background: #2457d6;
+      color: white;
+    }
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      padding: 9px;
+      border-bottom: 1px solid #e7eaf0;
+      text-align: left;
+      font-size: 14px;
+    }
+    .table-wrap { overflow-x: auto; }
+    #chart { width: 100%; min-height: 320px; }
+    #status { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>NB Data Explorer</h1>
+  <p class="muted">
+    Exploration statistique de fichiers CSV — traitement local.
+  </p>
+
+  <section class="panel">
+    <h2>1. Importer un dossier</h2>
+    <p>Choisis le dossier contenant tes fichiers CSV.</p>
+    <input id="folder" type="file" webkitdirectory multiple>
+    <p id="status" class="muted">En attente d'un dossier.</p>
+    <label for="dataset">Fichier à explorer :</label>
+    <select id="dataset" disabled>
+      <option value="">Aucun fichier</option>
+    </select>
+  </section>
+
+  <section class="panel">
+    <h2>2. Aperçu des données</h2>
+    <p id="dimensions" class="muted">Aucune donnée chargée.</p>
+    <div class="table-wrap">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>3. Statistiques descriptives</h2>
+    <label for="variable">Variable numérique :</label>
+    <select id="variable" disabled></select>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th></tr>
+        </thead>
+        <tbody id="stats"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>4. Distribution</h2>
+    <div id="chart"></div>
+  </section>
+
+<script>
+  const folder = document.getElementById("folder");
+  const dataset = document.getElementById("dataset");
+  const variable = document.getElementById("variable");
+  const status = document.getElementById("status");
+
+  let filesData = [];
+
+  folder.addEventListener("change", async () => {
+    filesData = [];
+    dataset.innerHTML = "";
+    status.textContent = "Lecture des fichiers CSV...";
+
+    const files = Array.from(folder.files).filter(
+      f => f.name.toLowerCase().endsWith(".csv")
+    );
+
+    for (const file of files) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: "greedy",
+            dynamicTyping: false,
+            complete: resolve,
+            error: reject
+          });
+        });
+
+        const rows = result.data.filter(row =>
+          Object.values(row).some(v => String(v ?? "").trim() !== "")
+        );
+
+        filesData.push({
+          name: file.webkitRelativePath || file.name,
+          rows,
+          columns: result.meta.fields || [],
+          errors: result.errors.length
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    for (let i = 0; i < filesData.length; i++) {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = filesData[i].name;
+      dataset.appendChild(option);
+    }
+
+    dataset.disabled = filesData.length === 0;
+
+    status.textContent = filesData.length
+      ? `${filesData.length} fichier(s) CSV chargé(s) dans le navigateur.`
+      : "Aucun CSV lisible trouvé.";
+
+    if (filesData.length) showDataset(0);
+  });
+
+  dataset.addEventListener("change", () => {
+    if (dataset.value !== "") showDataset(Number(dataset.value));
+  });
+
+  variable.addEventListener("change", updateAnalysis);
+
+  function showDataset(index) {
+    const data = filesData[index];
+    if (!data) return;
+
+    document.getElementById("dimensions").textContent =
+      `${data.rows.length} lignes · ${data.columns.length} colonnes` +
+      (data.errors ? ` · ${data.errors} avertissement(s) de lecture` : "");
+
+    const thead = document.getElementById("thead");
+    const tbody = document.getElementById("tbody");
+    thead.replaceChildren();
+    tbody.replaceChildren();
+
+    const headerRow = document.createElement("tr");
+    data.columns.forEach(col => {
+      const th = document.createElement("th");
+      th.textContent = col;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    data.rows.slice(0, 20).forEach(row => {
+      const tr = document.createElement("tr");
+      data.columns.forEach(col => {
+        const td = document.createElement("td");
+        td.textContent = row[col] ?? "";
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    variable.replaceChildren();
+    const numericColumns = data.columns.filter(col => {
+      const values = data.rows
+        .map(row => parseNumber(row[col]))
+        .filter(v => v !== null);
+      return values.length > 0 &&
+        values.length >= data.rows.length * 0.8;
+    });
+
+    numericColumns.forEach(col => {
+      const option = document.createElement("option");
+      option.value = col;
+      option.textContent = col;
+      variable.appendChild(option);
+    });
+
+    variable.disabled = numericColumns.length === 0;
+    updateAnalysis();
+  }
+
+  function parseNumber(value) {
+    if (value == null || String(value).trim() === "") return null;
+    let s = String(value).trim();
+
+    // Accepte les nombres décimaux avec virgule.
+    if (s.includes(",") && !s.includes(".")) {
+      s = s.replace(",", ".");
+    }
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function quantile(sorted, p) {
+    if (!sorted.length) return NaN;
+    const pos = (sorted.length - 1) * p;
+    const low = Math.floor(pos);
+    const high = Math.ceil(pos);
+    return sorted[low] +
+      (sorted[high] - sorted[low]) * (pos - low);
+  }
+
+  function updateAnalysis() {
+    const data = filesData[Number(dataset.value)];
+    const col = variable.value;
+    if (!data || !col || variable.disabled) {
+      document.getElementById("stats").replaceChildren();
+      Plotly.purge("chart");
+      return;
+    }
+
+    const raw = data.rows.map(row => row[col]);
+    const values = raw.map(parseNumber).filter(v => v !== null);
+    const missing = raw.length - values.length;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mean = values.length
+      ? values.reduce((a, b) => a + b, 0) / values.length
+      : NaN;
+    const variance = values.length > 1
+      ? values.reduce((s, x) => s + (x - mean) ** 2, 0)
+        / (values.length - 1)
+      : NaN;
+
+    const summary = [
+      ["Observations numériques", values.length],
+      ["Valeurs manquantes / non numériques", missing],
+      ["Moyenne", mean],
+      ["Médiane", quantile(sorted, 0.5)],
+      ["Écart-type (échantillon)", Math.sqrt(variance)],
+      ["Minimum", sorted[0]],
+      ["Premier quartile", quantile(sorted, 0.25)],
+      ["Troisième quartile", quantile(sorted, 0.75)],
+      ["Maximum", sorted[sorted.length - 1]]
+    ];
+
+    const tbody = document.getElementById("stats");
+    tbody.replaceChildren();
+
+    summary.forEach(([label, value]) => {
+      const tr = document.createElement("tr");
+      const th = document.createElement("td");
+      const td = document.createElement("td");
+      th.textContent = label;
+      td.textContent = typeof value === "number" && Number.isFinite(value)
+        ? value.toLocaleString("fr-FR", { maximumFractionDigits: 4 })
+        : "—";
+      tr.append(th, td);
+      tbody.appendChild(tr);
+    });
+
+    Plotly.newPlot("chart", [{
+      x: values,
+      type: "histogram",
+      marker: { color: "#4776d0" },
+      hovertemplate: "Valeur : %{x}<br>Effectif : %{y}<extra></extra>"
+    }], {
+      title: `Distribution de ${col}`,
+      xaxis: { title: col },
+      yaxis: { title: "Effectif" },
+      margin: { t: 50, r: 20, b: 55, l: 55 },
+      paper_bgcolor: "white",
+      plot_bgcolor: "white"
+    }, {
+      responsive: true,
+      displaylogo: false
+    });
+  }
+</script>
+</body>
+</html>
