@@ -274,6 +274,37 @@
     </div>
   </div>
 
+<section class="panel">
+  <h2>Répartition des zones FC par date</h2>
+
+  <div class="grid">
+    <div>
+      <label for="fcDate">Date à analyser</label>
+      <select id="fcDate">
+        <option value="">Toutes les dates</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="fcPlayer">Joueur à analyser</label>
+      <select id="fcPlayer">
+        <option value="">Tous les joueurs</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="fcDisplay">Affichage</label>
+      <select id="fcDisplay">
+        <option value="stacked">Temps cumulé par zone</option>
+        <option value="percentage">Pourcentage par zone</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="fcChart" style="width:100%;min-height:380px"></div>
+  <p id="fcStatus" class="muted"></p>
+</section>
+
   <section class="panel">
     <h2>3. Zones d'intensité cardiaque</h2>
     <p class="hint">
@@ -1009,6 +1040,152 @@
   });
 
   $("exportStats").addEventListener("click", exportStats);
+  
+  function updateFCChart() {
+    const dateSelect = $("fcDate");
+    const playerSelect = $("fcPlayer");
+    const display = $("fcDisplay").value;
+
+    const dateCol = findColumn(allColumns, ["Date"]);
+    const playerCol = findColumn(allColumns, ["Name"]);
+
+    if (!dateCol) {
+      $("fcStatus").textContent =
+        "Impossible de trouver la colonne Date dans les CSV.";
+      Plotly.purge("fcChart");
+      return;
+    }
+
+    const selectedDate = dateSelect.value;
+    const selectedPlayer = playerSelect.value;
+
+    const rows = allRows.filter(row => {
+      if (selectedDate && dateISO(row[dateCol]) !== selectedDate) {
+        return false;
+      }
+      if (selectedPlayer &&
+          (!playerCol || row[playerCol] !== selectedPlayer)) {
+        return false;
+      }
+      if ($("period").value) {
+        const col = findColumn(allColumns, ["Period Name"]);
+        if (!col || row[col] !== $("period").value) return false;
+      }
+      if ($("activity").value) {
+        const col = findColumn(allColumns, ["Activity Name"]);
+        if (!col || row[col] !== $("activity").value) return false;
+      }
+      if ($("position").value) {
+        const col = findColumn(allColumns, ["Position Name"]);
+        if (!col || row[col] !== $("position").value) return false;
+      }
+      return true;
+    });
+
+    const zones = zoneDefinitions.map(z => z.label);
+    const totals = zones.map(zone => {
+      const values = rows.map(row => parseNumber(row[zone]))
+        .filter(v => v !== null);
+      return values.length ? values.reduce((a, b) => a + b, 0) : 0;
+    });
+
+    if (!rows.length || !totals.some(v => v > 0)) {
+      $("fcStatus").textContent =
+        "Aucune donnée exploitable pour cette sélection. Vérifie les dates et les colonnes sources.";
+      Plotly.purge("fcChart");
+      return;
+    }
+
+    const colors = ["#6BAED6", "#66B879", "#F0B44D", "#D9534F"];
+    const total = totals.reduce((a, b) => a + b, 0);
+
+    const traces = zones.map((zone, i) => ({
+      type: "bar",
+      name: zone,
+      x: [display === "percentage" ? 100 : totals[i]],
+      y: [display === "percentage"
+        ? (total ? totals[i] / total * 100 : 0)
+        : 1],
+      orientation: "h",
+      marker: { color: colors[i] },
+      customdata: [totals[i]],
+      hovertemplate:
+        zone + "<br>Durée cumulée : %{customdata:.2f}" +
+        "<br>Part du total : " +
+        (total ? (totals[i] / total * 100).toFixed(1) : "0") +
+        "%<extra></extra>"
+    }));
+
+    // Le graphique est une barre unique, découpée en quatre zones.
+    // Les durées sont conservées dans customdata pour l'infobulle.
+    Plotly.react("fcChart", traces, {
+      title: display === "percentage"
+        ? "Répartition relative des zones FC"
+        : "Temps cumulé dans les zones FC",
+      barmode: "stack",
+      xaxis: {
+        title: display === "percentage"
+          ? "Pourcentage du temps (%)"
+          : "Durée cumulée (unité des CSV)"
+      },
+      yaxis: { visible: false },
+      margin: { t: 55, r: 25, b: 65, l: 25 },
+      showlegend: true,
+      legend: { orientation: "h", y: -0.25 },
+      paper_bgcolor: "white",
+      plot_bgcolor: "white"
+    }, { responsive: true, displaylogo: false });
+
+    $("fcStatus").textContent =
+      `${rows.length} ligne(s) incluse(s) · ` +
+      `Durée totale cumulée : ${total.toLocaleString("fr-FR", {
+        maximumFractionDigits: 2
+      })} (unité des CSV).`;
+  }
+
+  function populateFCControls() {
+    const dateCol = findColumn(allColumns, ["Date"]);
+    const playerCol = findColumn(allColumns, ["Name"]);
+
+    const dates = dateCol
+      ? [...new Set(allRows.map(row => dateISO(row[dateCol])).filter(Boolean))]
+          .sort()
+      : [];
+
+    const dateSelect = $("fcDate");
+    const previousDate = dateSelect.value;
+    dateSelect.replaceChildren();
+
+    const allDates = document.createElement("option");
+    allDates.value = "";
+    allDates.textContent = "Toutes les dates";
+    dateSelect.appendChild(allDates);
+
+    dates.forEach(date => {
+      const option = document.createElement("option");
+      option.value = date;
+      option.textContent = date;
+      dateSelect.appendChild(option);
+    });
+
+    if (dates.includes(previousDate)) dateSelect.value = previousDate;
+
+    selectOptions(
+      "fcPlayer",
+      "Tous les joueurs",
+      playerCol ? allRows.map(row => row[playerCol]) : []
+    );
+  }
+
+  $("fcDate").addEventListener("change", updateFCChart);
+  $("fcPlayer").addEventListener("change", updateFCChart);
+  $("fcDisplay").addEventListener("change", updateFCChart);
+
+  // Rafraîchir le graphique lorsque les filtres globaux changent.
+  ["period", "activity", "position"].forEach(id =>
+    $(id).addEventListener("change", updateFCChart)
+  );
+
 </script>
 </body>
 </html>
