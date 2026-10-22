@@ -616,22 +616,27 @@ function renderSummaryPage(page){
     const posCol=findColumn(allColumns,["Position Name"]);
     if(posCol){
       const groupNames=["Big Five","3e Ligne","Trois quarts"];
-      const gSeries=zoneDefinitions.map((z,i)=>{
-        const s=groupNames.map(g=>{
-          const vals=curRows.filter(r=>positionGroup(r[posCol])===g)
-            .map(r=>zoneFromRow(r,i)).filter(v=>v!==null);
-          return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
-        });
-        s._name=z.name;return s;
+      const gMeans=zoneDefinitions.map((z,i)=>groupNames.map(g=>{
+        const vals=curRows.filter(r=>positionGroup(r[posCol])===g)
+          .map(r=>zoneFromRow(r,i)).filter(v=>v!==null);
+        return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+      }));
+      const gSeries=gMeans.map((means,si)=>{
+        const s=means.slice();
+        s._name=zoneDefinitions[si].name;return s;
       });
       const gRanges=zoneDefinitions.map((z,i)=>groupNames.map(g=>{
         const s=stats(curRows.filter(r=>positionGroup(r[posCol])===g).map(r=>zoneFromRow(r,i)));
         return {min:s.min,max:s.max};
       }));
+      const gTotals=groupNames.map((g,li)=>{
+        const t=gMeans.reduce((acc,means)=>acc+(means[li]||0),0);
+        return t||0;
+      });
       const nG=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
       groupedBarChart(groupChart,gSeries.slice(0,nG),groupNames,zoneColors.slice(0,nG),"Durée (min)",
         {range:(li,si)=>gRanges[si]?gRanges[si][li]:null,
-         valueLabel:(v,li,si)=>v!==null?`${fmt(v,1)} min`:null});
+         valueLabel:(v,li,si)=>v!==null&&gTotals[li]>0?`${fmt(v,1)} · ${fmt(v/gTotals[li]*100,0)}%`:null});
     }else{
       groupChart.replaceChildren();
       groupChart.appendChild(emptyMsg("Colonne « Position Name » absente : le graphique par groupe de postes n'est pas disponible."));
