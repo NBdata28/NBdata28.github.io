@@ -53,9 +53,9 @@ footer{text-align:center;color:var(--muted);padding:12px 20px 28px;font-size:12p
   <h1>NB Data Explorer</h1>
   <p>Analyse des données de performance rugby — import et calculs réalisés dans ton navigateur.</p>
   <nav class="menu" id="topMenu" aria-label="Navigation">
-    <button type="button" data-page="player" class="active">Statistiques par joueur</button>
+    <button type="button" data-page="summary" class="active">Résumé séance</button>
+    <button type="button" data-page="player">Statistiques par joueur</button>
     <button type="button" data-page="group">Groupes personnalisés</button>
-    <button type="button" data-page="all">Tout le groupe</button>
   </nav>
 </header>
 
@@ -98,7 +98,7 @@ footer{text-align:center;color:var(--muted);padding:12px 20px 28px;font-size:12p
 const $=id=>document.getElementById(id);
 let allRows=[],allColumns=[],zoneDefinitions=[];
 let groups=[];
-let currentPage="player";
+let currentPage="summary";
 
 /* ================= Utilitaires ================= */
 function normalizeHeader(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim().replace(/\s*%\s*/g,"%");}
@@ -499,6 +499,83 @@ function renderPlayerPage(page){
   if(sel.value)page.appendChild(variableAnalysisSection(getFilteredRows([sel.value])));
 }
 
+/* ================= Page : Résumé séance (accueil) ================= */
+function zoneMeanByPlayer(rows,player,i){
+  const pr=rows.filter(r=>rowPlayer(r)===player);
+  return stats(pr.map(r=>zoneFromRow(r,i))).mean;
+}
+function renderSummaryPage(page){
+  const sec=document.createElement("section");
+  const h=document.createElement("h2");h.textContent="Résumé séance";sec.appendChild(h);
+  const dates=uniqueValues(allRows.map(rowDate).filter(Boolean)).sort();
+  if(!dates.length){
+    sec.appendChild(emptyMsg("Aucune date détectée dans les données (vérifie la colonne Date)."));
+    page.appendChild(sec);return;
+  }
+  const row=document.createElement("div");row.className="row";
+  const f=document.createElement("div");f.className="field";
+  const lab=document.createElement("label");lab.textContent="Date de la séance";
+  const dateSel=document.createElement("select");
+  dates.forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=displayDate(d);dateSel.appendChild(o);});
+  dateSel.value=dates[dates.length-1];
+  f.append(lab,dateSel);row.appendChild(f);sec.appendChild(row);
+  const status=document.createElement("div");status.className="status";sec.appendChild(status);
+  const chartTitle=document.createElement("h3");
+  chartTitle.textContent="Zones de fréquence cardiaque par joueur (durée par séance)";
+  const chart=document.createElement("div");chart.className="chart";
+  sec.append(chartTitle,chart);
+  const stTitle=document.createElement("h3");
+  stTitle.textContent="Temps moyen par zone — versus séance précédente";
+  sec.appendChild(stTitle);
+  const wrap=document.createElement("div");wrap.className="table-wrap";
+  const table=document.createElement("table");
+  table.innerHTML="<thead><tr><th>Zone FC</th><th>Temps moyen (séance)</th><th>Temps moyen (séance précédente)</th><th>Écart</th><th>Écart %</th></tr></thead>";
+  const tbody=document.createElement("tbody");
+  table.appendChild(tbody);wrap.appendChild(table);sec.appendChild(wrap);
+  const hint=document.createElement("p");hint.className="hint";
+  hint.textContent="Les temps moyens sont calculés sur les joueurs présents à chaque date ; les valeurs manquantes ne sont pas remplacées par zéro. La séance sélectionnée est par défaut la dernière date disponible.";
+  sec.appendChild(hint);
+  page.appendChild(sec);
+
+  function update(){
+    const date=dateSel.value;
+    const idx=dates.indexOf(date);
+    const prev=idx>0?dates[idx-1]:null;
+    const curRows=allRows.filter(r=>rowDate(r)===date);
+    const prevRows=prev?allRows.filter(r=>rowDate(r)===prev):[];
+    const players=uniqueValues(curRows.map(rowPlayer));
+    status.textContent=`Séance du ${displayDate(date)}`+
+      (dates.indexOf(date)===dates.length-1?" (dernière date disponible)":"")+
+      ` · ${players.length} joueur(s) · ${curRows.length} ligne(s)`+
+      (prev?` · comparaison avec le ${displayDate(prev)}`:" · aucune séance précédente disponible.");
+    // Graphique : un groupe de barres par joueur, une barre par zone FC
+    const zoneSeries=zoneDefinitions.map((z,i)=>{
+      const s=players.map(p=>zoneMeanByPlayer(curRows,p,i));
+      s._name=z.name;return s;
+    });
+    const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
+    groupedBarChart(chart,zoneSeries.slice(0,n),players,zoneColors.slice(0,n),"Durée (unité du CSV)");
+    // Stats descriptives par zone
+    tbody.replaceChildren();
+    zoneDefinitions.forEach((z,i)=>{
+      const curVals=players.map(p=>zoneMeanByPlayer(curRows,p,i)).filter(v=>v!==null);
+      const prevPlayers=uniqueValues(prevRows.map(rowPlayer));
+      const prevVals=prevPlayers.map(p=>zoneMeanByPlayer(prevRows,p,i)).filter(v=>v!==null);
+      const curMean=curVals.length?curVals.reduce((a,b)=>a+b,0)/curVals.length:null;
+      const prevMean=prevVals.length?prevVals.reduce((a,b)=>a+b,0)/prevVals.length:null;
+      const ecart=curMean!==null&&prevMean!==null?curMean-prevMean:null;
+      const pct=ecart!==null&&prevMean?ecart/prevMean*100:null;
+      const tr=document.createElement("tr");
+      [z.name,fmt(curMean),fmt(prevMean),fmt(ecart),pct!==null?(pct>=0?"+":"")+fmt(pct,1)+" %":"—"].forEach(v=>{
+        const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  dateSel.addEventListener("change",update);
+  update();
+}
+
 /* ================= Page : Groupes personnalisés ================= */
 function loadGroups(){
   try{const raw=localStorage.getItem("nbGroups");if(raw){const g=JSON.parse(raw);if(Array.isArray(g))groups=g;}}catch(e){}
@@ -594,53 +671,12 @@ function renderGroupPage(page){
   });
 }
 
-/* ================= Page : Tout le groupe ================= */
-function renderAllPage(page){
-  const rows=getFilteredRows();
-  const sec=document.createElement("section");
-  const h=document.createElement("h2");h.textContent="Tout le groupe";sec.appendChild(h);
-  if(!rows.length){sec.appendChild(emptyMsg("Aucune ligne ne correspond aux filtres."));page.appendChild(sec);return;}
-  sec.appendChild(metricCards(rows,"Tous les joueurs"));
-  const h3=document.createElement("h3");h3.textContent="Zones de fréquence cardiaque — moyenne du groupe";
-  sec.appendChild(h3);
-  const chart=document.createElement("div");chart.className="chart";
-  zoneAverageChart(rows,chart,0);
-  sec.appendChild(chart);
-  const h4=document.createElement("h3");h4.textContent="Statistiques par zone";sec.appendChild(h4);
-  sec.appendChild(zoneStatsTable(rows));
-  const ph=document.createElement("h3");ph.textContent="Résumé par joueur";sec.appendChild(ph);
-  const wrap2=document.createElement("div");wrap2.className="table-wrap";
-  const t=document.createElement("table");
-  const headCells=["Joueur","Lignes","Dates","Durée totale moyenne"];
-  zoneDefinitions.forEach(z=>headCells.push(z.name+" (moy.)"));
-  t.innerHTML="<thead><tr>"+headCells.map(c=>`<th>${c}</th>`).join("")+"</tr></thead>";
-  const tb=document.createElement("tbody");
-  const totalCol=findColumn(allColumns,["Total Duration"]);
-  uniqueValues(rows.map(rowPlayer)).forEach(p=>{
-    const pr=rows.filter(r=>rowPlayer(r)===p);
-    const tr=document.createElement("tr");
-    const vals=[p,fmt(pr.length,0),fmt(uniqueValues(pr.map(rowDate).filter(Boolean)).length,0),
-      totalCol?fmt(stats(pr.map(r=>parseNumber(r[totalCol]))).mean):"—"];
-    vals.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
-    zoneDefinitions.forEach((z,i)=>{
-      const td=document.createElement("td");td.textContent=fmt(stats(pr.map(r=>zoneFromRow(r,i))).mean);tr.appendChild(td);
-    });
-    tb.appendChild(tr);
-  });
-  t.appendChild(tb);wrap2.appendChild(t);sec.appendChild(wrap2);
-  const hint=document.createElement("p");hint.className="hint";
-  hint.textContent="Les zones FC ne sont calculées que si toutes leurs colonnes sources sont présentes et renseignées ; les valeurs manquantes ne sont pas remplacées par zéro.";
-  sec.appendChild(hint);
-  page.appendChild(sec);
-  page.appendChild(variableAnalysisSection(rows));
-}
-
 /* ================= Navigation ================= */
 function renderPage(){
   const page=$("page");page.replaceChildren();
-  if(currentPage==="player")renderPlayerPage(page);
-  else if(currentPage==="group")renderGroupPage(page);
-  else renderAllPage(page);
+  if(currentPage==="summary")renderSummaryPage(page);
+  else if(currentPage==="player")renderPlayerPage(page);
+  else renderGroupPage(page);
 }
 document.querySelectorAll("#topMenu button").forEach(btn=>{
   btn.addEventListener("click",()=>{
