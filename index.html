@@ -70,6 +70,7 @@ footer{text-align:center;color:var(--muted);padding:12px 20px 28px;font-size:12p
       <button id="clearBtn" class="secondary" type="button">Tout effacer</button>
     </div>
     <div id="importStatus" class="status">Aucun fichier importé.</div>
+    <div id="zoneDiag" class="hidden" style="margin-top:12px"></div>
   </section>
 
   <div id="analysisArea" class="hidden">
@@ -115,6 +116,8 @@ function parseNumber(v){
   if(s.includes(",")&&s.includes(".")){s=s.lastIndexOf(",")>s.lastIndexOf(".")?s.replace(/\./g,"").replace(",","."):s.replace(/,/g,"");}
   else if(s.includes(","))s=s.replace(",",".");
   s=s.replace(/%$/,"");
+  const tm=s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?$/);
+  if(tm) return tm[3]!==undefined?(+tm[1])*3600+(+tm[2])*60+(+tm[3]):(+tm[1])*60+(+tm[2]);
   const n=Number(s);return Number.isFinite(n)?n:null;
 }
 function dateISO(v){
@@ -686,6 +689,30 @@ document.querySelectorAll("#topMenu button").forEach(btn=>{
   });
 });
 
+function populateZoneDiag(){
+  const box=$("zoneDiag");
+  box.replaceChildren();
+  box.classList.remove("hidden");
+  const title=document.createElement("p");title.className="muted";
+  title.textContent="Diagnostic des zones FC : colonnes détectées dans tes fichiers. Une zone reste vide si une de ses colonnes sources est absente ou ne contient aucune valeur exploitable.";
+  box.appendChild(title);
+  const wrap=document.createElement("div");wrap.className="table-wrap";
+  const t=document.createElement("table");
+  t.innerHTML="<thead><tr><th>Zone FC</th><th>Colonnes sources attendues</th><th>Colonnes détectées</th><th>Lignes avec zone calculée</th></tr></thead>";
+  const tb=document.createElement("tbody");
+  zoneDefinitions.forEach(z=>{
+    const tr=document.createElement("tr");
+    const expected=z.sources.map(c=>c[0]).join("  ·  ");
+    const found=z.columns.map((c,i)=>c?c+" ✓":"« "+z.sources[i][0]+" » introuvable").join("  ·  ");
+    const ok=allRows.filter(r=>zoneValue(r,z)!==null).length;
+    [z.name,expected,found,`${fmt(ok,0)} / ${fmt(allRows.length,0)}`].forEach(v=>{
+      const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);wrap.appendChild(t);box.appendChild(wrap);
+}
+
 /* ================= Import ================= */
 async function importFiles(){
   const files=[...$("csvFiles").files,...$("folderFiles").files].filter(f=>/\.csv$/i.test(f.name));
@@ -716,6 +743,7 @@ async function importFiles(){
     if(!allRows.length)throw new Error("Les fichiers ne contiennent aucune ligne de données.");
     prepareZones();
     populateFilters();
+    populateZoneDiag();
     $("analysisArea").classList.remove("hidden");
     renderPage();
     const msg=`${allRows.length} ligne(s) importée(s) depuis ${compatible.length} fichier(s).`+
@@ -730,6 +758,8 @@ function clearAll(){
   $("csvFiles").value="";$("folderFiles").value="";
   $("analysisArea").classList.add("hidden");
   $("page").replaceChildren();
+  $("zoneDiag").classList.add("hidden");
+  $("zoneDiag").replaceChildren();
   setStatus("Aucun fichier importé.");
 }
 $("importBtn").addEventListener("click",importFiles);
