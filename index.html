@@ -270,7 +270,7 @@ function populateFilters(){
 const NS="http://www.w3.org/2000/svg";
 function svgEl(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
 function emptyMsg(msg){const p=document.createElement("p");p.className="empty";p.textContent=msg;return p;}
-function groupedBarChart(container,series,labels,colors,yTitle){
+function groupedBarChart(container,series,labels,colors,yTitle,opts){
   container.replaceChildren();
   const allVals=series.flatMap(s=>s.filter(v=>v!==null));
   if(!allVals.length){container.appendChild(emptyMsg("Aucune donnée à tracer."));return;}
@@ -291,11 +291,19 @@ function groupedBarChart(container,series,labels,colors,yTitle){
       const v=s[li];
       if(v===null||v===undefined)return;
       const h=ih*(v/maxV);
-      const x=gx+5+si*barW;
-      const rect=svgEl("rect",{x,y:m.t+ih-h,width:barW-3,height:h,fill:colors[si],rx:3});
+      const wMul=opts&&opts.widths&&opts.widths[si]!==undefined?opts.widths[si]:1;
+      const wBar=Math.max(3,barW*wMul-3);
+      const x=gx+5+si*barW+(barW-wBar)/2;
+      const fill=Array.isArray(colors[si])?colors[si][li]:colors[si];
+      const rect=svgEl("rect",{x,y:m.t+ih-h,width:wBar,height:h,fill,rx:3});
       const title=svgEl("title",{});
       title.textContent=`${lab} — ${fmt(v)}`;
       rect.appendChild(title);svg.appendChild(rect);
+      const lab2=opts&&opts.valueLabel?opts.valueLabel(v,li,si):null;
+      if(lab2){
+        const t2=svgEl("text",{x:x+wBar/2,y:m.t+ih-h-5,"text-anchor":"middle","font-size":10,"font-weight":600,fill:"#203040"});
+        t2.textContent=lab2;svg.appendChild(t2);
+      }
     });
     const t=svgEl("text",{x:gx+groupW/2,y:H-m.b+18,"text-anchor":"middle","font-size":11,fill:"#203040"});
     t.textContent=lab.length>14?lab.slice(0,13)+"…":lab;svg.appendChild(t);
@@ -304,7 +312,7 @@ function groupedBarChart(container,series,labels,colors,yTitle){
   if(series.length>1){
     series.forEach((s,si)=>{
       const lx=m.l+si*170,ly=H-14;
-      svg.appendChild(svgEl("rect",{x:lx,y:ly-10,width:12,height:12,fill:colors[si],rx:2}));
+      svg.appendChild(svgEl("rect",{x:lx,y:ly-10,width:12,height:12,fill:Array.isArray(colors[si])?colors[si][0]:colors[si],rx:2}));
       const t=svgEl("text",{x:lx+18,y:ly,"font-size":12,fill:"#203040"});
       t.textContent=s._name||"";svg.appendChild(t);
     });
@@ -487,7 +495,15 @@ function renderPlayerPage(page){
       return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
     });
     const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
-    groupedBarChart(chart,[current.values.slice(0,n),averages.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[0],"#94a3b8"],"Durée (min)");
+    const actCol=findColumn(allColumns,["Activity Name"]);
+    const acts=uniqueValues(allRows.filter(r=>rowPlayer(r)===p&&rowDate(r)===date).map(r=>String(r[actCol]??"").trim()));
+    chartTitle.textContent=`Zone FC — ${acts.length?`« ${acts.join(", ")} » du ${displayDate(date)}`:displayDate(date)} vs moyenne des séances précédentes`;
+    const total=current.values.reduce((a,b)=>a+(b||0),0);
+    const cur=current.values.slice(0,n),avg=averages.slice(0,n);
+    cur._name=`Séance du ${displayDate(date)}`;
+    avg._name="Moyenne des séances précédentes";
+    groupedBarChart(chart,[cur,avg],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors.slice(0,n),"#94a3b8"],"Durée (min)",
+      {widths:[1,0.5],valueLabel:(v,li,si)=>si===0&&v!==null&&total>0?`${fmt(v,1)} · ${fmt(v/total*100,0)}%`:null});
     status.textContent=`${p} · ${displayDate(date)} · ${current.count} ligne(s) regroupée(s) · ${previous.length} date(s) historique(s) utilisée(s).`;
     zoneDefinitions.forEach((z,i)=>{
       const tr=document.createElement("tr");
