@@ -219,7 +219,7 @@ function zoneValue(row,zone){
   if(zone.columns.some(c=>!c))return null;
   const vs=zone.columns.map(c=>parseNumber(row[c]));
   if(vs.some(v=>v===null))return null;
-  return vs.reduce((a,b)=>a+b,0);
+  return vs.reduce((a,b)=>a+b,0)/60; // secondes -> minutes
 }
 function prepareZones(){
   zoneDefinitions=resolveZones(allColumns);
@@ -345,24 +345,25 @@ function histogramChart(container,values,variable){
 }
 
 /* ================= Blocs communs ================= */
+function durMin(v){const n=parseNumber(v);return n===null?null:n/60;}
 function makeMetric(name,value){const d=document.createElement("div");d.className="metric";const n=document.createElement("div");n.className="name";n.textContent=name;const v=document.createElement("div");v.className="value";v.textContent=value;d.append(n,v);return d;}
 function metricCards(rows,label){
   const cards=document.createElement("div");cards.className="metrics";
   const totalCol=findColumn(allColumns,["Total Duration"]);
   const dates=uniqueValues(rows.map(rowDate).filter(Boolean));
-  const total=totalCol?stats(rows.map(r=>parseNumber(r[totalCol]))):null;
+  const total=totalCol?stats(rows.map(r=>durMin(r[totalCol]))):null;
   cards.appendChild(makeMetric("Population",label));
   cards.appendChild(makeMetric("Lignes",fmt(rows.length,0)));
   cards.appendChild(makeMetric("Joueurs",fmt(uniqueValues(rows.map(rowPlayer)).length,0)));
   cards.appendChild(makeMetric("Dates (séances)",fmt(dates.length,0)));
-  cards.appendChild(makeMetric("Durée totale moyenne",total?fmt(total.mean):"—"));
+  cards.appendChild(makeMetric("Durée totale moyenne (min)",total?fmt(total.mean):"—"));
   return cards;
 }
 function zoneStatsTable(rows){
   const wrap=document.createElement("div");wrap.className="table-wrap";
   const table=document.createElement("table");
   const thead=document.createElement("thead");
-  thead.innerHTML="<tr><th>Zone FC</th><th>Valeurs</th><th>Total</th><th>Moyenne</th><th>Médiane</th><th>Min</th><th>Max</th></tr>";
+  thead.innerHTML="<tr><th>Zone FC</th><th>Valeurs</th><th>Total (min)</th><th>Moyenne</th><th>Médiane</th><th>Min</th><th>Max</th></tr>";
   const tbody=document.createElement("tbody");
   zoneDefinitions.forEach((z,i)=>{
     const s=stats(rows.map(r=>zoneFromRow(r,i)));
@@ -375,7 +376,7 @@ function zoneStatsTable(rows){
 function zoneAverageChart(rows,chart,colorIdx){
   const zoneAvg=zoneDefinitions.map((z,i)=>stats(rows.map(r=>zoneFromRow(r,i))).mean);
   const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
-  groupedBarChart(chart,[zoneAvg.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[colorIdx]],"Durée moyenne");
+  groupedBarChart(chart,[zoneAvg.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[colorIdx]],"Durée moyenne (min)");
 }
 function sessionsOfPlayer(player){
   const rows=allRows.filter(r=>rowPlayer(r)===player);
@@ -486,7 +487,7 @@ function renderPlayerPage(page){
       return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
     });
     const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
-    groupedBarChart(chart,[current.values.slice(0,n),averages.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[0],"#94a3b8"],"Durée (unité du CSV)");
+    groupedBarChart(chart,[current.values.slice(0,n),averages.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[0],"#94a3b8"],"Durée (min)");
     status.textContent=`${p} · ${displayDate(date)} · ${current.count} ligne(s) regroupée(s) · ${previous.length} date(s) historique(s) utilisée(s).`;
     zoneDefinitions.forEach((z,i)=>{
       const tr=document.createElement("tr");
@@ -532,7 +533,7 @@ function renderSummaryPage(page){
   sec.appendChild(stTitle);
   const wrap=document.createElement("div");wrap.className="table-wrap";
   const table=document.createElement("table");
-  table.innerHTML="<thead><tr><th>Zone FC</th><th>Temps moyen (séance)</th><th>Temps moyen (séance précédente)</th><th>Écart</th><th>Écart %</th></tr></thead>";
+  table.innerHTML="<thead><tr><th>Zone FC</th><th>Temps moyen, min (séance)</th><th>Temps moyen, min (séance précédente)</th><th>Écart</th><th>Écart %</th></tr></thead>";
   const tbody=document.createElement("tbody");
   table.appendChild(tbody);wrap.appendChild(table);sec.appendChild(wrap);
   const hint=document.createElement("p");hint.className="hint";
@@ -557,7 +558,7 @@ function renderSummaryPage(page){
       s._name=z.name;return s;
     });
     const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
-    groupedBarChart(chart,zoneSeries.slice(0,n),players,zoneColors.slice(0,n),"Durée (unité du CSV)");
+    groupedBarChart(chart,zoneSeries.slice(0,n),players,zoneColors.slice(0,n),"Durée (min)");
     if(!n||zoneSeries.every(s=>s.every(v=>v===null))){
       status.textContent+=" · Attention : aucune zone FC n'a pu être calculée — consulte le tableau « Diagnostic des zones FC » sous le message d'import, et vérifie que les colonnes Duration x% FCmax existent bien.";
     }
@@ -649,13 +650,13 @@ function renderGroupPage(page){
       card.appendChild(ph);
       const wrap=document.createElement("div");wrap.className="table-wrap";
       const t=document.createElement("table");
-      t.innerHTML="<thead><tr><th>Joueur</th><th>Lignes</th><th>Dates</th><th>Durée totale moyenne</th></tr></thead>";
+      t.innerHTML="<thead><tr><th>Joueur</th><th>Lignes</th><th>Dates</th><th>Durée totale moyenne (min)</th></tr></thead>";
       const tb=document.createElement("tbody");
       const totalCol=findColumn(allColumns,["Total Duration"]);
       g.players.forEach(p=>{
         const pr=rows.filter(r=>rowPlayer(r)===p);
         if(!pr.length)return;
-        const s=totalCol?stats(pr.map(r=>parseNumber(r[totalCol]))).mean:null;
+        const s=totalCol?stats(pr.map(r=>durMin(r[totalCol]))).mean:null;
         const tr=document.createElement("tr");
         [p,fmt(pr.length,0),fmt(uniqueValues(pr.map(rowDate).filter(Boolean)).length,0),fmt(s)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
         tb.appendChild(tr);
