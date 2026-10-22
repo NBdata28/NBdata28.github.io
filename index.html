@@ -208,10 +208,10 @@ function compatibleHeaders(a,b){return a.length===b.length&&a.every(c=>b.some(d=
 const zoneColors=["#3b82f6","#14b8a6","#f59e0b","#ef4444"];
 function resolveZones(columns){
   const defs=[
-    {name:"Récupération",sources:[["Duration <50% FCmax","Duration <50% FC max"],["Duration 50-60% FCmax","Duration 50-60% FC max"],["Duration 60-70%FCmax","Duration 60-70% FCmax","Duration 60-70% FC max"]]},
-    {name:"Moyenne intensité",sources:[["Duration 70-80%FCmax","Duration 70-80% FC max"],["Duration 80-85% FC max","Duration 80-85%FCmax"]]},
-    {name:"Haute intensité",sources:[["Duration 85-90% FC max","Duration 85-90%FCmax"],["Duration 90-95% FC max","Duration 90-95%FCmax"]]},
-    {name:"Très haute intensité",sources:[["Duration 95-100% FC max","Duration 95-100%FCmax"]]}
+    {name:"Récupération",sources:[["Duration <50% FCmax","Duration <50% FC max","Duration <50% HRmax","Duration <50% HR max","Duration <50%FCmax"],["Duration 50-60% FCmax","Duration 50-60% FC max","Duration 50-60% HRmax","Duration 50-60% HR max","Duration 50-60%FCmax"],["Duration 60-70%FCmax","Duration 60-70% FCmax","Duration 60-70% FC max","Duration 60-70% HRmax","Duration 60-70% HR max"]]},
+    {name:"Moyenne intensité",sources:[["Duration 70-80%FCmax","Duration 70-80% FCmax","Duration 70-80% FC max","Duration 70-80% HRmax","Duration 70-80% HR max"],["Duration 80-85% FC max","Duration 80-85%FCmax","Duration 80-85% FCmax","Duration 80-85% HRmax","Duration 80-85% HR max"]]},
+    {name:"Haute intensité",sources:[["Duration 85-90% FC max","Duration 85-90%FCmax","Duration 85-90% FCmax","Duration 85-90% HRmax","Duration 85-90% HR max"],["Duration 90-95% FC max","Duration 90-95%FCmax","Duration 90-95% FCmax","Duration 90-95% HRmax","Duration 90-95% HR max"]]},
+    {name:"Très haute intensité",sources:[["Duration 95-100% FC max","Duration 95-100%FCmax","Duration 95-100% FCmax","Duration 95-100% HRmax","Duration 95-100% HR max"]]}
   ];
   return defs.map(z=>({...z,columns:z.sources.map(c=>findColumn(columns,c))}));
 }
@@ -558,6 +558,9 @@ function renderSummaryPage(page){
     });
     const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
     groupedBarChart(chart,zoneSeries.slice(0,n),players,zoneColors.slice(0,n),"Durée (unité du CSV)");
+    if(!n||zoneSeries.every(s=>s.every(v=>v===null))){
+      status.textContent+=" · Attention : aucune zone FC n'a pu être calculée — consulte le tableau « Diagnostic des zones FC » sous le message d'import, et vérifie que les colonnes Duration x% FCmax existent bien.";
+    }
     // Stats descriptives par zone
     tbody.replaceChildren();
     zoneDefinitions.forEach((z,i)=>{
