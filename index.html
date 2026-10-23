@@ -366,11 +366,13 @@ function lineChart(container,dates,series,colors,title){
   const W=920,H=280,m={t:26,r:16,b:46,l:56};
   const svg=svgEl("svg",{viewBox:`0 0 ${W} ${H}`,role:"img"});
   const iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const allVals=series.flatMap(s=>s.values.filter(v=>v!==null));
+  const maxV=(allVals.length?Math.max(...allVals):1)*1.15||1;
   for(let i=0;i<=4;i++){
     const y=m.t+ih-ih*i/4;
     svg.appendChild(svgEl("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#e2e8f0"}));
     const t=svgEl("text",{x:m.l-8,y:y+4,"text-anchor":"end","font-size":11,fill:"#64748b"});
-    t.textContent=(25*i)+" %";svg.appendChild(t);
+    t.textContent=fmt(maxV*i/4,1);svg.appendChild(t);
   }
   const xs=dates.map((d,i)=>dates.length>1?m.l+iw*i/(dates.length-1):m.l+iw/2);
   dates.forEach((d,i)=>{
@@ -379,7 +381,7 @@ function lineChart(container,dates,series,colors,title){
   });
   series.forEach((s,si)=>{
     const idx=s.values.map((vv,k)=>vv===null?null:k).filter(k=>k!==null);
-    const pts=idx.map(i=>[xs[i],m.t+ih-ih*(Math.max(0,Math.min(100,s.values[i]))/100)]);
+    const pts=idx.map(i=>[xs[i],m.t+ih-ih*(Math.max(0,Math.min(maxV,s.values[i]))/maxV)]);
     if(pts.length>1){
       svg.appendChild(svgEl("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:colors[si],"stroke-width":2}));
     }
@@ -601,7 +603,7 @@ function renderSummaryPage(page){
   const groupChart=document.createElement("div");groupChart.className="chart";
   sec.append(groupTitle,groupChart);
   const linesTitle=document.createElement("h3");
-  linesTitle.textContent="Évolution des zones FC par groupe de postes (% du temps, séance après séance)";
+  linesTitle.textContent="Évolution des zones FC par groupe de postes (durée en minutes, séance après séance)";
   const zoneLines=document.createElement("div");
   sec.append(linesTitle,zoneLines);
   const chartTitle=document.createElement("h3");
@@ -678,9 +680,9 @@ function renderSummaryPage(page){
             const rows=allRows.filter(r=>rowDate(r)===d&&positionGroup(r[posCol])===g);
             const means=zoneDefinitions.map((zz,i)=>stats(rows.map(r=>zoneFromRow(r,i))).mean);
             const totZ=means.reduce((a,b)=>a+(b||0),0);
-            if(means[zi]===null||!totZ){series[gi].values.push(null);series[gi].labels.push(null);}
+            if(means[zi]===null){series[gi].values.push(null);series[gi].labels.push(null);}
             else{
-              series[gi].values.push(means[zi]/totZ*100);
+              series[gi].values.push(means[zi]);
               const dur=totalCol?stats(rows.map(r=>durMin(r[totalCol]))).mean:totZ;
               series[gi].labels.push(dur!==null?fmt(dur,0)+"′":null);
             }
