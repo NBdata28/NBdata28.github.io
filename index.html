@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NB Data Explorer — Aperçu</title>
+<title>NB Data Explorer</title>
 <style>
 :root{--navy:#173f5f;--blue:#2878a8;--bg:#f4f7fb;--ink:#203040;--muted:#64748b;--border:#dce3ea;--card:#fff}
 *{box-sizing:border-box}
@@ -14,167 +14,767 @@ nav.menu{display:flex;gap:4px;margin-top:14px;flex-wrap:wrap}
 nav.menu button{border:none;background:transparent;color:#cfe2f0;padding:10px 16px;border-radius:9px 9px 0 0;font:inherit;font-weight:600;cursor:pointer}
 nav.menu button:hover{background:#1e4d73;color:white}
 nav.menu button.active{background:var(--bg);color:var(--navy)}
-main{max-width:1200px;margin:20px auto;padding:0 20px}
-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #14283c08}
+main{max-width:1400px;margin:20px auto;padding:0 20px}
+section,.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #14283c08}
 h2{font-size:19px;margin:0 0 12px}h3{font-size:16px;margin:14px 0 8px}
-.muted{color:var(--muted);font-size:13px}
-.new{display:inline-block;background:#dcfce7;color:#166534;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;vertical-align:middle;margin-left:8px}
-.status{padding:10px 12px;border-radius:8px;background:#eef4f8;color:#27465d;margin:12px 0;font-size:13px}
+p{margin:6px 0 12px}.muted,.hint{color:var(--muted);font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1}
+label{font-weight:600;font-size:13px}
+input,select,button{font:inherit;border-radius:7px}
+input[type="file"],select,input[type="text"]{width:100%;min-height:38px;border:1px solid #cbd5e1;background:white;padding:8px;color:var(--ink)}
+button{border:1px solid var(--navy);background:var(--navy);color:white;padding:9px 13px;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(1.08)}button.secondary{background:white;color:var(--navy)}button.danger{background:#b91c1c;border-color:#b91c1c}button:disabled{opacity:.5;cursor:not-allowed}
+.status{padding:10px 12px;border-radius:8px;background:#eef4f8;color:#27465d;margin-top:12px;font-size:13px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.metric{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fbfdff}
+.metric .name{font-size:12px;color:var(--muted)}.metric .value{font-size:22px;font-weight:750;margin-top:4px;overflow-wrap:anywhere}
 .table-wrap{overflow:auto;max-width:100%;border:1px solid var(--border);border-radius:8px}
 table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
 th,td{padding:8px 10px;border-bottom:1px solid #e7edf2;text-align:left}
-th{background:#f1f5f9}
-.chart{width:100%}
-.chart svg{width:100%;height:auto;display:block;max-height:340px}
+th{background:#f1f5f9;position:sticky;top:0;z-index:1}tbody tr:hover{background:#f8fafc}
+.chart{width:100%;min-height:300px}
+.chart svg{width:100%;height:auto;display:block;max-height:420px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid #cbd5e1;background:#f1f5f9;border-radius:999px;padding:6px 13px;cursor:pointer;font-size:13px;font-weight:600;color:#243447}
+.chip:hover{background:#e2eaf3}
+.chip.on{background:var(--navy);color:white;border-color:var(--navy)}
+.group-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.group-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.group-head h3{margin:0}
+.hidden{display:none!important}
+.empty{color:var(--muted);font-style:italic;padding:12px}
 footer{text-align:center;color:var(--muted);padding:12px 20px 28px;font-size:12px}
+@media(max-width:700px){header{padding:16px}header h1{font-size:20px}.row>*{min-width:100%}}
 </style>
 </head>
 <body>
 <header>
   <h1>NB Data Explorer</h1>
-  <p>Aperçu — données de démonstration intégrées</p>
-  <nav class="menu" id="topMenu">
+  <p>Analyse des données de performance rugby — import et calculs réalisés dans ton navigateur.</p>
+  <nav class="menu" id="topMenu" aria-label="Navigation">
     <button type="button" data-page="summary" class="active">Résumé séance</button>
     <button type="button" data-page="player">Statistiques par joueur</button>
     <button type="button" data-page="group">Groupes personnalisés</button>
     <button type="button" data-page="diag">Diagnostic zones FC</button>
   </nav>
 </header>
-<main><div id="page"></div></main>
-<footer>Aperçu des modifications : graphique « groupes de postes » en premier sur l'accueil · diagnostic FC masqué, visible uniquement dans son onglet.</footer>
+
+<main>
+  <section>
+    <h2>1. Importer les données</h2>
+    <p class="muted">Sélectionne plusieurs CSV à la fois, ou un dossier complet. Les fichiers doivent avoir des colonnes compatibles pour être fusionnés.</p>
+    <div class="row">
+      <div class="field"><label for="csvFiles">Fichiers CSV</label><input id="csvFiles" type="file" accept=".csv,text/csv" multiple></div>
+      <div class="field"><label for="folderFiles">Dossier de CSV</label><input id="folderFiles" type="file" accept=".csv,text/csv" multiple webkitdirectory directory></div>
+      <button id="importBtn" type="button">Importer les fichiers</button>
+      <button id="clearBtn" class="secondary" type="button">Tout effacer</button>
+    </div>
+    <div id="importStatus" class="status">Aucun fichier importé.</div>
+  </section>
+
+  <div id="analysisArea" class="hidden">
+    <section>
+      <h2>2. Filtrer les données (toutes les pages)</h2>
+      <div class="row">
+        <div class="field"><label for="filterDate">Date</label><select id="filterDate"><option value="">Toutes les dates</option></select></div>
+        <div class="field"><label for="period">Période</label><select id="period"><option value="">Toutes les périodes</option></select></div>
+        <div class="field"><label for="activity">Activité</label><select id="activity"><option value="">Toutes les activités</option></select></div>
+        <div class="field"><label for="position">Poste</label><select id="position"><option value="">Tous les postes</option></select></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="resetBtn" class="secondary" type="button">Réinitialiser les filtres</button>
+        <button id="exportFilteredBtn" type="button">Exporter les lignes filtrées (CSV)</button>
+        <button id="exportStatsBtn" type="button">Exporter les statistiques (CSV)</button>
+      </div>
+    </section>
+
+    <div id="page"></div>
+  </div>
+</main>
+<footer>NB Data Explorer · Les données restent dans ton navigateur ; aucun fichier n'est envoyé à un serveur.</footer>
+
 <script>
 "use strict";
-const NS="http://www.w3.org/2000/svg";
 const $=id=>document.getElementById(id);
+let allRows=[],allColumns=[],zoneDefinitions=[];
+let groups=[];
+let currentPage="summary";
+
+/* ================= Utilitaires ================= */
+function normalizeHeader(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim().replace(/\s*%\s*/g,"%");}
+function findColumn(columns,candidates){
+  const norm=columns.map(c=>({o:c,n:normalizeHeader(c)}));
+  for(const cand of candidates){const n=normalizeHeader(cand);const e=norm.find(c=>c.n===n);if(e)return e.o;}
+  for(const cand of candidates){const n=normalizeHeader(cand);const p=norm.find(c=>c.n.includes(n));if(p)return p.o;}
+  return null;
+}
+function parseNumber(v){
+  if(v===null||v===undefined||String(v).trim()==="")return null;
+  if(typeof v==="number")return Number.isFinite(v)?v:null;
+  let s=String(v).trim().replace(/\u00a0/g,"").replace(/\s/g,"");
+  if(s.includes(",")&&s.includes(".")){s=s.lastIndexOf(",")>s.lastIndexOf(".")?s.replace(/./g,"").replace(",","."):s.replace(/,/g,"");}
+  else if(s.includes(","))s=s.replace(",",".");
+  s=s.replace(/%$/,"");
+  const tm=s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?(?:.\d+)?$/);
+  if(tm) return tm[3]!==undefined?(+tm[1])*3600+(+tm[2])*60+(+tm[3]):(+tm[1])*60+(+tm[2]);
+  const n=Number(s);return Number.isFinite(n)?n:null;
+}
+function dateISO(v){
+  if(v===null||v===undefined||String(v).trim()==="")return "";
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if(m)return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m=s.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{2,4})/);
+  if(m){let y=m[3];if(y.length===2)y=Number(y)>50?"19"+y:"20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;}
+  const d=new Date(s);
+  if(!Number.isNaN(d.getTime()))return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return "";
+}
+function displayDate(v){if(!v)return "Date inconnue";const p=v.split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:v;}
+function fmt(v,d=2){if(v===null||v===undefined||!Number.isFinite(Number(v)))return "—";return Number(v).toLocaleString("fr-FR",{maximumFractionDigits:d});}
+function uniqueValues(vs){return [...new Set(vs.filter(v=>v!==null&&v!==undefined&&String(v).trim()!=="").map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b,"fr",{numeric:true}));}
+function setStatus(m,t="importStatus"){$(t).textContent=m;}
+function quantile(sorted,q){
+  if(!sorted.length)return null;
+  const pos=(sorted.length-1)*q,b=Math.floor(pos),r=pos-b;
+  return sorted[b+1]!==undefined?sorted[b]+r*(sorted[b+1]-sorted[b]):sorted[b];
+}
+function stats(values){
+  const a=values.filter(v=>v!==null&&Number.isFinite(v)).sort((x,y)=>x-y);
+  if(!a.length)return{n:0,mean:null,median:null,min:null,max:null,q1:null,q3:null,sum:null,sd:null};
+  const mean=a.reduce((x,y)=>x+y,0)/a.length;
+  return{n:a.length,mean,median:quantile(a,.5),min:a[0],max:a[a.length-1],q1:quantile(a,.25),q3:quantile(a,.75),sum:a.reduce((x,y)=>x+y,0),sd:Math.sqrt(a.reduce((s,v)=>s+(v-mean)*(v-mean),0)/a.length)};
+}
+function csvEscape(v){if(v===null||v===undefined)return "";const s=String(v);return /[;"\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function downloadCSV(filename,columns,rows){
+  const content=[columns.map(csvEscape).join(";"),...rows.map(r=>columns.map(c=>csvEscape(r[c])).join(";"))].join("\r\n");
+  const blob=new Blob(["\uFEFF",content],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+
+/* ================= Parseur CSV maison ================= */
+function detectDelimiter(sample){
+  const cand=[";","\t",",","|"];
+  let best=";",bestScore=-1;
+  for(const d of cand){
+    const score=sample.split(d).length-1;
+    if(score>bestScore){bestScore=score;best=d;}
+  }
+  return best;
+}
+function parseCSVText(text){
+  text=text.replace(/^\uFEFF/,"");
+  const firstLine=(text.split(/\r?\n/)[0]||"");
+  const delim=detectDelimiter(firstLine);
+  const rows=[];let row=[],field="",inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){if(text[i+1]==='"'){field+='"';i++;}else inQ=false;}
+      else field+=c;
+    }else{
+      if(c==='"')inQ=true;
+      else if(c===delim){row.push(field);field="";}
+      else if(c==="\n"){row.push(field);field="";rows.push(row);row=[];}
+      else if(c==="\r"){}
+      else field+=c;
+    }
+  }
+  if(field!==""||row.length){row.push(field);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+function readFileText(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>resolve(String(fr.result||""));
+    fr.onerror=()=>reject(new Error("Lecture impossible : "+file.name));
+    fr.readAsText(file,"utf-8");
+  });
+}
+async function parseCSVFile(file){
+  const text=await readFileText(file);
+  const table=parseCSVText(text);
+  if(table.length<2)throw new Error("Fichier vide ou sans données : "+file.name);
+  const fields=table[0].map((h,i)=>String(h||"").trim()||("Colonne "+(i+1)));
+  const rows=table.slice(1).map(cells=>{
+    const o={};fields.forEach((f,i)=>o[f]=cells[i]!==undefined?cells[i]:"");return o;
+  });
+  return{file,fields,rows};
+}
+function compatibleHeaders(a,b){return a.length===b.length&&a.every(c=>b.some(d=>normalizeHeader(c)===normalizeHeader(d)));}
+
+/* ================= Zones FC ================= */
 const zoneColors=["#3b82f6","#14b8a6","#f59e0b","#ef4444"];
-const zones=["Récupération","Moyenne intensité","Haute intensité","Très haute intensité"];
-const players=["Joueur A","Joueur B","Joueur C","Joueur D"];
-// Données démo : durée moyenne par zone (min) par joueur
-const demoZones=players.map(()=>[28,14,9,4].map(v=>v*(0.8+Math.random()*0.4)));
-const groups=["Big Five","3e Ligne","Trois quarts"];
-const demoGroups=groups.map(()=>[30,15,10,4].map(v=>v*(0.7+Math.random()*0.6)));
+function resolveZones(columns){
+  const defs=[
+    {name:"Récupération",sources:[["Duration <50% FCmax","Duration <50% FC max","Duration <50% HRmax","Duration <50% HR max","Duration <50%FCmax"],["Duration 50-60% FCmax","Duration 50-60% FC max","Duration 50-60% HRmax","Duration 50-60% HR max","Duration 50-60%FCmax"],["Duration 60-70%FCmax","Duration 60-70% FCmax","Duration 60-70% FC max","Duration 60-70% HRmax","Duration 60-70% HR max"]]},
+    {name:"Moyenne intensité",sources:[["Duration 70-80%FCmax","Duration 70-80% FCmax","Duration 70-80% FC max","Duration 70-80% HRmax","Duration 70-80% HR max"],["Duration 80-85% FC max","Duration 80-85%FCmax","Duration 80-85% FCmax","Duration 80-85% HRmax","Duration 80-85% HR max"]]},
+    {name:"Haute intensité",sources:[["Duration 85-90% FC max","Duration 85-90%FCmax","Duration 85-90% FCmax","Duration 85-90% HRmax","Duration 85-90% HR max"],["Duration 90-95% FC max","Duration 90-95%FCmax","Duration 90-95% FCmax","Duration 90-95% HRmax","Duration 90-95% HR max"]]},
+    {name:"Très haute intensité",sources:[["Duration 95-100% FC max","Duration 95-100%FCmax","Duration 95-100% FCmax","Duration 95-100% HRmax","Duration 95-100% HR max"]]}
+  ];
+  return defs.map(z=>({...z,columns:z.sources.map(c=>findColumn(columns,c))}));
+}
+function zoneValue(row,zone){
+  if(zone.columns.some(c=>!c))return null;
+  const vs=zone.columns.map(c=>parseNumber(row[c]));
+  if(vs.some(v=>v===null))return null;
+  return vs.reduce((a,b)=>a+b,0)/60; // secondes -> minutes
+}
+function prepareZones(){
+  zoneDefinitions=resolveZones(allColumns);
+  allRows=allRows.map(row=>{
+    const next={...row};
+    zoneDefinitions.forEach((z,i)=>{next[`Zone FC ${i+1}`]=zoneValue(row,z);});
+    return next;
+  });
+  ["Zone FC 1","Zone FC 2","Zone FC 3","Zone FC 4"].forEach(c=>{if(!allColumns.includes(c))allColumns.push(c);});
+}
+function zoneFromRow(row,i){return parseNumber(row[`Zone FC ${i+1}`]);}
 
+/* ================= Colonnes clés ================= */
+function playerCol(){return findColumn(allColumns,["Name"]);}
+function dateCol(){return findColumn(allColumns,["Date"]);}
+function rowPlayer(r){const c=playerCol();return c?String(r[c]??"").trim():"";}
+function rowDate(r){const c=dateCol();return c?dateISO(r[c]):"";}
+
+/* ================= Filtrage ================= */
+function getFilteredRows(extraPlayers){
+  const periodCol=findColumn(allColumns,["Period Name"]),activityCol=findColumn(allColumns,["Activity Name"]),positionCol=findColumn(allColumns,["Position Name"]);
+  const fd=$("filterDate").value,fp=$("period").value,fa=$("activity").value,fpo=$("position").value;
+  const set=extraPlayers&&extraPlayers.length?new Set(extraPlayers):null;
+  return allRows.filter(r=>
+    (!set||set.has(rowPlayer(r)))&&
+    (!fd||(rowDate(r)||String(r[dateCol()]||""))===fd)&&
+    (!fp||String(r[periodCol]??"").trim()===fp)&&
+    (!fa||String(r[activityCol]??"").trim()===fa)&&
+    (!fpo||String(r[positionCol]??"").trim()===fpo)
+  );
+}
+function resetFilters(){["filterDate","period","activity","position"].forEach(id=>$(id).selectedIndex=0);renderPage();}
+function selectOptions(id,values,firstLabel){
+  const el=$(id);
+  el.replaceChildren();
+  const f=document.createElement("option");f.value="";f.textContent=firstLabel;el.appendChild(f);
+  values.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;el.appendChild(o);});
+}
+function populateFilters(){
+  const dCol=dateCol();
+  selectOptions("filterDate",uniqueValues(allRows.map(r=>dateISO(r[dCol])||String(r[dCol]||""))).sort(),"Toutes les dates");
+  selectOptions("period",uniqueValues(allRows.map(r=>r[findColumn(allColumns,["Period Name"])])),"Toutes les périodes");
+  selectOptions("activity",uniqueValues(allRows.map(r=>r[findColumn(allColumns,["Activity Name"])])),"Toutes les activités");
+  selectOptions("position",uniqueValues(allRows.map(r=>r[findColumn(allColumns,["Position Name"])])),"Tous les postes");
+}
+
+/* ================= Graphiques SVG ================= */
+const NS="http://www.w3.org/2000/svg";
 function svgEl(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
-function fmt(v){return Number(v).toLocaleString("fr-FR",{maximumFractionDigits:1});}
-
-function barChart(series,labels,colors,opts){
-  opts=opts||{};
-  const W=900,H=300,m={t:22,r:14,b:44,l:56};
-  const maxV=Math.max(...series.flat())*1.1||1;
-  const svg=svgEl("svg",{viewBox:`0 0 ${W} ${H}`});
+function emptyMsg(msg){const p=document.createElement("p");p.className="empty";p.textContent=msg;return p;}
+function groupedBarChart(container,series,labels,colors,yTitle,opts){
+  container.replaceChildren();
+  const allVals=series.flatMap(s=>s.filter(v=>v!==null));
+  if(!allVals.length){container.appendChild(emptyMsg("Aucune donnée à tracer."));return;}
+  const W=920,H=340,m={t:16,r:16,b:64,l:70};
+  const maxV=Math.max(...allVals)*1.1||1;
+  const svg=svgEl("svg",{viewBox:`0 0 ${W} ${H}`,role:"img"});
   const iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const groupW=iw/labels.length,barW=Math.max(4,(groupW-10)/series.length);
   for(let i=0;i<=4;i++){
     const y=m.t+ih-ih*i/4;
-    svg.appendChild(svgEl("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#e2e8f0"}));
+    svg.appendChild(svgEl("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#e2e8f0","stroke-width":1}));
     const t=svgEl("text",{x:m.l-8,y:y+4,"text-anchor":"end","font-size":11,fill:"#64748b"});
-    t.textContent=fmt(maxV*i/4);svg.appendChild(t);
+    t.textContent=fmt(maxV*i/4,1);svg.appendChild(t);
   }
-  const gW=iw/labels.length,barW=Math.max(4,(gW-10)/series.length);
   labels.forEach((lab,li)=>{
-    const gx=m.l+gW*li;
+    const gx=m.l+groupW*li;
     series.forEach((s,si)=>{
-      const v=s[li],h=ih*(v/maxV);
-      const wBar=barW-3,x=gx+5+si*barW;
-      const rect=svgEl("rect",{x,y:m.t+ih-h,width:wBar,height:h,fill:colors[si],rx:3});
-      const rg=opts.range?opts.range(li,si):null;
-      const ti=svgEl("title");
-      ti.textContent=`${lab} — ${zones[si]} : ${fmt(v)} min`+(rg?` · min ${fmt(rg.min)} · max ${fmt(rg.max)}`:"");
-      rect.appendChild(ti);
-      svg.appendChild(rect);
+      const v=s[li];
+      if(v===null||v===undefined)return;
+      const h=ih*(v/maxV);
+      const wMul=opts&&opts.widths&&opts.widths[si]!==undefined?opts.widths[si]:1;
+      const wBar=Math.max(3,barW*wMul-3);
+      const x=gx+5+si*barW+(barW-wBar)/2;
+      const fill=Array.isArray(colors[si])?colors[si][li]:colors[si];
+      const rect=svgEl("rect",{x,y:m.t+ih-h,width:wBar,height:h,fill,rx:3});
+      const rg=opts&&opts.range?opts.range(li,si):null;
+      const title=svgEl("title",{});
+      title.textContent=`${lab} — ${fmt(v)}`+
+        (rg&&rg.min!==null&&rg.max!==null?` · min ${fmt(rg.min)} · max ${fmt(rg.max)}`:"");
+      rect.appendChild(title);svg.appendChild(rect);
       if(rg&&rg.min!==null&&rg.max!==null&&rg.min<=rg.max){
         const cx=x+wBar/2;
         const y1=m.t+ih-ih*(rg.max/maxV),y2=m.t+ih-ih*(rg.min/maxV);
         svg.appendChild(svgEl("line",{x1:cx,y1,x2:cx,y2,stroke:"#334155","stroke-width":1.5}));
         [y1,y2].forEach(yy=>svg.appendChild(svgEl("line",{x1:cx-4,y1:yy,x2:cx+4,y2:yy,stroke:"#334155","stroke-width":1.5})));
       }
-      const lab2=opts.valueLabel?opts.valueLabel(v,li,si):null;
+      const lab2=opts&&opts.valueLabel?opts.valueLabel(v,li,si):null;
       if(lab2){
-        const t2=svgEl("text",{x:x+wBar/2,y:m.t+ih-h-5,"text-anchor":"middle","font-size":9,"font-weight":600,fill:"#203040"});
+        const t2=svgEl("text",{x:x+wBar/2,y:m.t+ih-h-5,"text-anchor":"middle","font-size":10,"font-weight":600,fill:"#203040"});
         t2.textContent=lab2;svg.appendChild(t2);
       }
     });
-    const t=svgEl("text",{x:gx+gW/2,y:H-m.b+18,"text-anchor":"middle","font-size":11});
-    t.textContent=lab;svg.appendChild(t);
+    const t=svgEl("text",{x:gx+groupW/2,y:H-m.b+18,"text-anchor":"middle","font-size":11,fill:"#203040"});
+    t.textContent=lab.length>14?lab.slice(0,13)+"…":lab;svg.appendChild(t);
   });
-  series.forEach((s,si)=>{
-    const lx=m.l+si*160,ly=H-12;
-    svg.appendChild(svgEl("rect",{x:lx,y:ly-10,width:12,height:12,fill:colors[si],rx:2}));
-    const t=svgEl("text",{x:lx+18,y:ly,"font-size":12});t.textContent=s._name;svg.appendChild(t);
+  if(yTitle){const t=svgEl("text",{x:14,y:m.t+ih/2,"font-size":12,fill:"#64748b",transform:`rotate(-90 14 ${m.t+ih/2})`,"text-anchor":"middle"});t.textContent=yTitle;svg.appendChild(t);}
+  if(series.length>1){
+    series.forEach((s,si)=>{
+      const lx=m.l+si*170,ly=H-14;
+      svg.appendChild(svgEl("rect",{x:lx,y:ly-10,width:12,height:12,fill:Array.isArray(colors[si])?colors[si][0]:colors[si],rx:2}));
+      const t=svgEl("text",{x:lx+18,y:ly,"font-size":12,fill:"#203040"});
+      t.textContent=s._name||"";svg.appendChild(t);
+    });
+  }
+  container.appendChild(svg);
+}
+function histogramChart(container,values,variable){
+  container.replaceChildren();
+  if(!values.length){container.appendChild(emptyMsg("Aucune valeur numérique pour cette variable."));return;}
+  const W=920,H=320,m={t:16,r:16,b:52,l:60};
+  const min=values[0],max=values[values.length-1];
+  const nbins=Math.min(30,Math.max(8,Math.ceil(Math.sqrt(values.length))));
+  const bins=new Array(nbins).fill(0);
+  const span=(max-min)||1;
+  values.forEach(v=>{bins[Math.min(nbins-1,Math.floor((v-min)/span*nbins))]++;});
+  const maxB=Math.max(...bins);
+  const svg=svgEl("svg",{viewBox:`0 0 ${W} ${H}`,role:"img"});
+  const iw=W-m.l-m.r,ih=H-m.t-m.b,bw=iw/nbins;
+  for(let i=0;i<=4;i++){
+    const y=m.t+ih-ih*i/4;
+    svg.appendChild(svgEl("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#e2e8f0"}));
+    const t=svgEl("text",{x:m.l-8,y:y+4,"text-anchor":"end","font-size":11,fill:"#64748b"});
+    t.textContent=Math.round(maxB*i/4);svg.appendChild(t);
+  }
+  bins.forEach((b,i)=>{
+    const h=ih*(b/maxB);
+    const rect=svgEl("rect",{x:m.l+i*bw+1,y:m.t+ih-h,width:bw-3,height:h,fill:"#2878a8",rx:2});
+    const title=svgEl("title");title.textContent=`${fmt(min+span*i/nbins)} – ${fmt(min+span*(i+1)/nbins)} : ${b} ligne(s)`;rect.appendChild(title);
+    svg.appendChild(rect);
   });
-  return svg;
+  [min,(min+max)/2,max].forEach((v,i)=>{
+    const t=svgEl("text",{x:m.l+i*iw/2,y:H-m.b+20,"text-anchor":"middle","font-size":11,fill:"#64748b"});
+    t.textContent=fmt(v,1);svg.appendChild(t);
+  });
+  const t=svgEl("text",{x:m.l+iw/2,y:H-8,"text-anchor":"middle","font-size":12,fill:"#203040"});
+  t.textContent=variable;svg.appendChild(t);
+  container.appendChild(svg);
 }
 
-function h3(text,badge){
-  const h=document.createElement("h3");h.textContent=text;
-  if(badge){const b=document.createElement("span");b.className="new";b.textContent=badge;h.appendChild(b);}
-  return h;
+/* ================= Blocs communs ================= */
+function durMin(v){const n=parseNumber(v);return n===null?null:n/60;}
+function makeMetric(name,value){const d=document.createElement("div");d.className="metric";const n=document.createElement("div");n.className="name";n.textContent=name;const v=document.createElement("div");v.className="value";v.textContent=value;d.append(n,v);return d;}
+function metricCards(rows,label){
+  const cards=document.createElement("div");cards.className="metrics";
+  const totalCol=findColumn(allColumns,["Total Duration"]);
+  const dates=uniqueValues(rows.map(rowDate).filter(Boolean));
+  const total=totalCol?stats(rows.map(r=>durMin(r[totalCol]))):null;
+  cards.appendChild(makeMetric("Population",label));
+  cards.appendChild(makeMetric("Lignes",fmt(rows.length,0)));
+  cards.appendChild(makeMetric("Joueurs",fmt(uniqueValues(rows.map(rowPlayer)).length,0)));
+  cards.appendChild(makeMetric("Dates (séances)",fmt(dates.length,0)));
+  cards.appendChild(makeMetric("Durée totale moyenne (min)",total?fmt(total.mean):"—"));
+  return cards;
 }
-
-function renderSummary(page){
+function zoneStatsTable(rows){
+  const wrap=document.createElement("div");wrap.className="table-wrap";
+  const table=document.createElement("table");
+  const thead=document.createElement("thead");
+  thead.innerHTML="<tr><th>Zone FC</th><th>Valeurs</th><th>Total (min)</th><th>Moyenne</th><th>Médiane</th><th>Min</th><th>Max</th></tr>";
+  const tbody=document.createElement("tbody");
+  zoneDefinitions.forEach((z,i)=>{
+    const s=stats(rows.map(r=>zoneFromRow(r,i)));
+    const tr=document.createElement("tr");
+    [z.name,fmt(s.n,0),fmt(s.sum),fmt(s.mean),fmt(s.median),fmt(s.min),fmt(s.max)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+    tbody.appendChild(tr);
+  });
+  table.append(thead,tbody);wrap.appendChild(table);return wrap;
+}
+function zoneAverageChart(rows,chart,colorIdx){
+  const zoneAvg=zoneDefinitions.map((z,i)=>stats(rows.map(r=>zoneFromRow(r,i))).mean);
+  const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
+  groupedBarChart(chart,[zoneAvg.slice(0,n)],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors[colorIdx]],"Durée moyenne (min)");
+}
+function sessionsOfPlayer(player){
+  const rows=allRows.filter(r=>rowPlayer(r)===player);
+  const map=new Map();
+  rows.forEach(row=>{
+    const d=rowDate(row);if(!d)return;
+    if(!map.has(d))map.set(d,{date:d,count:0,sums:[0,0,0,0],valid:[true,true,true,true]});
+    const it=map.get(d);it.count++;
+    zoneDefinitions.forEach((z,i)=>{
+      const v=zoneFromRow(row,i);
+      if(v===null)it.valid[i]=false;else it.sums[i]+=v;
+    });
+  });
+  return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date))
+    .map(it=>({...it,values:it.sums.map((s,i)=>it.valid[i]?s:null)}));
+}
+function variableAnalysisSection(rows){
   const sec=document.createElement("section");
-  sec.appendChild(h2("Résumé séance"));
-  const st=document.createElement("div");st.className="status";
-  st.textContent="Séance du 22/10/2026 (dernière date disponible) · 4 joueur(s) · 24 ligne(s) · comparaison avec le 19/10/2026.";
-  sec.appendChild(st);
-  // 1er graphique : par groupe de postes (nouvel ordre)
-  sec.appendChild(h3("Zones FC par groupe de postes — moyenne (barre) et min–max (trait vertical)","DÉPLACÉ EN 1er"));
-  const c1=document.createElement("div");c1.className="chart";
-  const gs=demoGroups.map((means,i)=>{const s=means.slice();s._name=zones[i];return s;});
-  const gTotals=groups.map((g,li)=>gs.reduce((acc,s)=>acc+(s[li]||0),0));
-  const gRanges=zones.map((z,si)=>groups.map((g,li)=>({
-    min:Math.max(0,demoGroups[li][si]*0.6),
-    max:demoGroups[li][si]*1.4
-  })));
-  c1.appendChild(barChart(gs,groups,zoneColors,{
-    range:(li,si)=>gRanges[si][li],
-    valueLabel:(v,li,si)=>v!==null&&gTotals[li]>0?`${fmt(v,1)} · ${fmt(v/gTotals[li]*100,0)}%`:null
-  }));sec.appendChild(c1);
-  // 2e graphique : par joueur
-  sec.appendChild(h3("Zones de fréquence cardiaque par joueur (durée par séance)"));
-  const c2=document.createElement("div");c2.className="chart";
-  const ps=demoZones.map((means,i)=>{const s=means.slice();s._name=zones[i];return s;});
-  c2.appendChild(barChart(ps,players,zoneColors));sec.appendChild(c2);
+  const h=document.createElement("h2");h.textContent="Analyse d'une variable";sec.appendChild(h);
+  const excluded=new Set(["Name","Period Name","Activity Name","Date","Position Name","Fichier source"]);
+  const numeric=allColumns.filter(c=>!excluded.has(c)&&rows.some(r=>parseNumber(r[c])!==null));
+  const row=document.createElement("div");row.className="row";
+  const f1=document.createElement("div");f1.className="field";
+  const l1=document.createElement("label");l1.textContent="Variable numérique";
+  const sel=document.createElement("select");
+  sel.innerHTML="<option value=\"\">Choisir une variable</option>"+numeric.map(c=>`<option>${c}</option>`).join("");
+  if(numeric.length)sel.value=numeric[0];
+  f1.append(l1,sel);row.appendChild(f1);
+  sec.appendChild(row);
+  const cards=document.createElement("div");cards.className="metrics";cards.style.marginTop="14px";
+  const chart=document.createElement("div");chart.className="chart";
+  function draw(){
+    const v=sel.value;
+    const values=rows.map(r=>parseNumber(r[v])).filter(x=>x!==null).sort((a,b)=>a-b);
+    const s=stats(values);
+    cards.replaceChildren();
+    [["Valeurs valides",fmt(s.n,0)],["Moyenne",fmt(s.mean)],["Médiane",fmt(s.median)],["Écart-type",fmt(s.sd)],["Min",fmt(s.min)],["Max",fmt(s.max)]].forEach(([n,val])=>cards.appendChild(makeMetric(n,val)));
+    histogramChart(chart,values,v);
+  }
+  sel.addEventListener("change",draw);
+  sec.append(cards,chart);
+  draw();
+  return sec;
+}
+
+/* ================= Page : Statistiques par joueur ================= */
+function renderPlayerPage(page){
+  const players=uniqueValues(allRows.map(rowPlayer));
+  const sec=document.createElement("section");
+  const h=document.createElement("h2");h.textContent="Statistiques par joueur";sec.appendChild(h);
+  if(!players.length){sec.appendChild(emptyMsg("Aucun joueur détecté."));page.appendChild(sec);return;}
+  const row=document.createElement("div");row.className="row";
+  const f=document.createElement("div");f.className="field";
+  const lab=document.createElement("label");lab.textContent="Joueur";
+  const sel=document.createElement("select");
+  sel.innerHTML=`<option value="">Choisir un joueur</option>`+players.map(p=>`<option>${p}</option>`).join("");
+  const f2=document.createElement("div");f2.className="field";
+  const lab2=document.createElement("label");lab2.textContent="Date de la séance";
+  const dateSel=document.createElement("select");
+  f.append(lab,sel);f2.append(lab2,dateSel);row.append(f,f2);sec.appendChild(row);
+  const status=document.createElement("div");status.className="status";status.textContent="Sélectionne un joueur.";sec.appendChild(status);
+  const metrics=document.createElement("div");metrics.className="metrics";metrics.style.marginTop="12px";
+  const chartTitle=document.createElement("h3");chartTitle.textContent="Zones FC — séance sélectionnée vs moyenne des séances précédentes";
+  const chart=document.createElement("div");chart.className="chart";
+  sec.append(metrics,chartTitle,chart);
+  const th=document.createElement("h3");th.textContent="Comparaison des zones";
+  sec.appendChild(th);
+  const tableWrap=document.createElement("div");tableWrap.className="table-wrap";
+  const table=document.createElement("table");
+  table.innerHTML="<thead><tr><th>Zone FC</th><th>Séance sélectionnée</th><th>Moyenne des séances précédentes</th><th>Écart</th></tr></thead>";
+  const tbody=document.createElement("tbody");table.appendChild(tbody);tableWrap.appendChild(table);sec.appendChild(tableWrap);
+  const hint=document.createElement("p");hint.className="hint";
+  hint.textContent="La moyenne historique utilise jusqu'à cinq dates antérieures disponibles pour ce joueur. Les données de même date sont regroupées.";
+  sec.appendChild(hint);
+  const sh=document.createElement("h3");sh.textContent="Historique des séances du joueur";
+  sec.appendChild(sh);
+  const histWrap=document.createElement("div");histWrap.className="table-wrap";
+  const histTable=document.createElement("table");
+  const hhead=document.createElement("thead");
+  hhead.innerHTML=`<tr><th>Date</th><th>Lignes</th>${zoneDefinitions.map(z=>`<th>${z.name}</th>`).join("")}</tr>`;
+  const hbody=document.createElement("tbody");
+  histTable.append(hhead,hbody);histWrap.appendChild(histTable);sec.appendChild(histWrap);
   page.appendChild(sec);
+
+  function update(){
+    const p=sel.value;
+    const sessions=p?sessionsOfPlayer(p):[];
+    dateSel.innerHTML=`<option value="">Choisir une date</option>`+sessions.map(s=>`<option value="${s.date}">${displayDate(s.date)}</option>`).join("");
+    metrics.replaceChildren();tbody.replaceChildren();hbody.replaceChildren();chart.replaceChildren();
+    if(!p){status.textContent="Sélectionne un joueur.";return;}
+    const playerRows=getFilteredRows([p]);
+    metrics.appendChild(metricCards(playerRows,p));
+    sessions.forEach(s=>{
+      const tr=document.createElement("tr");
+      const td=document.createElement("td");td.textContent=displayDate(s.date);tr.appendChild(td);
+      const c=document.createElement("td");c.textContent=fmt(s.count,0);tr.appendChild(c);
+      s.values.forEach(v=>{const t=document.createElement("td");t.textContent=fmt(v);tr.appendChild(t);});
+      hbody.appendChild(tr);
+    });
+    if(!sessions.length){status.textContent="Aucune séance datée pour ce joueur (vérifie la colonne Date).";return;}
+    if(!dateSel.value)dateSel.value=sessions[sessions.length-1].date;
+    const date=dateSel.value;
+    const current=sessions.find(s=>s.date===date);
+    if(!current){status.textContent="Aucune séance trouvée pour ce joueur à cette date.";return;}
+    const previous=sessions.filter(s=>s.date<date).slice(-5);
+    const averages=zoneDefinitions.map((z,i)=>{
+      const vals=previous.map(s=>s.values[i]).filter(v=>v!==null);
+      return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+    });
+    const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
+    const actCol=findColumn(allColumns,["Activity Name"]);
+    const acts=uniqueValues(allRows.filter(r=>rowPlayer(r)===p&&rowDate(r)===date).map(r=>String(r[actCol]??"").trim()));
+    chartTitle.textContent=`Zone FC — ${acts.length?`« ${acts.join(", ")} » du ${displayDate(date)}`:displayDate(date)} vs moyenne des séances précédentes`;
+    const total=current.values.reduce((a,b)=>a+(b||0),0);
+    const cur=current.values.slice(0,n),avg=averages.slice(0,n);
+    cur._name=`Séance du ${displayDate(date)}`;
+    avg._name="Moyenne des séances précédentes";
+    groupedBarChart(chart,[cur,avg],zoneDefinitions.slice(0,n).map(z=>z.name),[zoneColors.slice(0,n),"#94a3b8"],"Durée (min)",
+      {widths:[1,0.5],valueLabel:(v,li,si)=>si===0&&v!==null&&total>0?`${fmt(v,1)} · ${fmt(v/total*100,0)}%`:null});
+    status.textContent=`${p} · ${displayDate(date)} · ${current.count} ligne(s) regroupée(s) · ${previous.length} date(s) historique(s) utilisée(s).`;
+    zoneDefinitions.forEach((z,i)=>{
+      const tr=document.createElement("tr");
+      const vals=[z.name,fmt(current.values[i]),fmt(averages[i]),current.values[i]!==null&&averages[i]!==null?fmt(current.values[i]-averages[i]):"—"];
+      vals.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+      tbody.appendChild(tr);
+    });
+  }
+  sel.addEventListener("change",update);
+  dateSel.addEventListener("change",update);
+  if(players.length===1)sel.value=players[0];
+  update();
+  if(sel.value)page.appendChild(variableAnalysisSection(getFilteredRows([sel.value])));
 }
 
-function renderPlaceholder(page,msg){
+/* ================= Page : Résumé séance (accueil) ================= */
+function positionGroup(pos){
+  const s=normalizeHeader(pos).replace(/[^a-z0-9]/g,"");
+  if(/pilier|talonneur|2eligne|deuxiemeligne/.test(s))return "Big Five";
+  if(/3eligne|troisiemeligne/.test(s))return "3e Ligne";
+  return "Trois quarts";
+}
+function zoneMeanByPlayer(rows,player,i){
+  const pr=rows.filter(r=>rowPlayer(r)===player);
+  return stats(pr.map(r=>zoneFromRow(r,i))).mean;
+}
+function renderSummaryPage(page){
   const sec=document.createElement("section");
-  sec.appendChild(h2(msg.title));
-  const p=document.createElement("p");p.className="muted";p.textContent=msg.text;
-  sec.appendChild(p);page.appendChild(sec);
+  const h=document.createElement("h2");h.textContent="Résumé séance";sec.appendChild(h);
+  const dates=uniqueValues(allRows.map(rowDate).filter(Boolean)).sort();
+  if(!dates.length){
+    sec.appendChild(emptyMsg("Aucune date détectée dans les données (vérifie la colonne Date)."));
+    page.appendChild(sec);return;
+  }
+  const row=document.createElement("div");row.className="row";
+  const f=document.createElement("div");f.className="field";
+  const lab=document.createElement("label");lab.textContent="Date de la séance";
+  const dateSel=document.createElement("select");
+  dates.forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=displayDate(d);dateSel.appendChild(o);});
+  dateSel.value=dates[dates.length-1];
+  f.append(lab,dateSel);row.appendChild(f);sec.appendChild(row);
+  const status=document.createElement("div");status.className="status";sec.appendChild(status);
+  const groupTitle=document.createElement("h3");
+  groupTitle.textContent="Zones FC par groupe de postes — moyenne (barre) et min–max (trait vertical)";
+  const groupChart=document.createElement("div");groupChart.className="chart";
+  sec.append(groupTitle,groupChart);
+  const chartTitle=document.createElement("h3");
+  chartTitle.textContent="Zones de fréquence cardiaque par joueur (durée par séance)";
+  const chart=document.createElement("div");chart.className="chart";
+  sec.append(chartTitle,chart);
+  const stTitle=document.createElement("h3");
+  stTitle.textContent="Temps moyen par zone — versus séance précédente";
+  sec.appendChild(stTitle);
+  const wrap=document.createElement("div");wrap.className="table-wrap";
+  const table=document.createElement("table");
+  table.innerHTML="<thead><tr><th>Zone FC</th><th>Temps moyen, min (séance)</th><th>Temps moyen, min (séance précédente)</th><th>Écart</th><th>Écart %</th></tr></thead>";
+  const tbody=document.createElement("tbody");
+  table.appendChild(tbody);wrap.appendChild(table);sec.appendChild(wrap);
+  const hint=document.createElement("p");hint.className="hint";
+  hint.textContent="Les temps moyens sont calculés sur les joueurs présents à chaque date ; les valeurs manquantes ne sont pas remplacées par zéro. La séance sélectionnée est par défaut la dernière date disponible.";
+  sec.appendChild(hint);
+  page.appendChild(sec);
+
+  function update(){
+    const date=dateSel.value;
+    const idx=dates.indexOf(date);
+    const prev=idx>0?dates[idx-1]:null;
+    const curRows=allRows.filter(r=>rowDate(r)===date);
+    const prevRows=prev?allRows.filter(r=>rowDate(r)===prev):[];
+    const players=uniqueValues(curRows.map(rowPlayer));
+    status.textContent=`Séance du ${displayDate(date)}`+
+      (dates.indexOf(date)===dates.length-1?" (dernière date disponible)":"")+
+      ` · ${players.length} joueur(s) · ${curRows.length} ligne(s)`+
+      (prev?` · comparaison avec le ${displayDate(prev)}`:" · aucune séance précédente disponible.");
+    // 1er graphique : par groupe de postes
+    const posCol=findColumn(allColumns,["Position Name"]);
+    if(posCol){
+      const groupNames=["Big Five","3e Ligne","Trois quarts"];
+      const gMeans=zoneDefinitions.map((z,i)=>groupNames.map(g=>{
+        const vals=curRows.filter(r=>positionGroup(r[posCol])===g)
+          .map(r=>zoneFromRow(r,i)).filter(v=>v!==null);
+        return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+      }));
+      const gSeries=gMeans.map((means,si)=>{
+        const s=means.slice();
+        s._name=zoneDefinitions[si].name;return s;
+      });
+      const gRanges=zoneDefinitions.map((z,i)=>groupNames.map(g=>{
+        const s=stats(curRows.filter(r=>positionGroup(r[posCol])===g).map(r=>zoneFromRow(r,i)));
+        return {min:s.min,max:s.max};
+      }));
+      const gTotals=groupNames.map((g,li)=>{
+        const t=gMeans.reduce((acc,means)=>acc+(means[li]||0),0);
+        return t||0;
+      });
+      const nG=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
+      groupedBarChart(groupChart,gSeries.slice(0,nG),groupNames,zoneColors.slice(0,nG),"Durée (min)",
+        {range:(li,si)=>gRanges[si]?gRanges[si][li]:null,
+         valueLabel:(v,li,si)=>v!==null&&gTotals[li]>0?`${fmt(v,1)} · ${fmt(v/gTotals[li]*100,0)}%`:null});
+    }else{
+      groupChart.replaceChildren();
+      groupChart.appendChild(emptyMsg("Colonne « Position Name » absente : le graphique par groupe de postes n'est pas disponible."));
+    }
+    // 2e graphique : un groupe de barres par joueur, une barre par zone FC
+    const zoneSeries=zoneDefinitions.map((z,i)=>{
+      const s=players.map(p=>zoneMeanByPlayer(curRows,p,i));
+      s._name=z.name;return s;
+    });
+    const n=zoneDefinitions.filter(z=>z.columns.every(c=>c)).length;
+    groupedBarChart(chart,zoneSeries.slice(0,n),players,zoneColors.slice(0,n),"Durée (min)");
+    if(!n||zoneSeries.every(s=>s.every(v=>v===null))){
+      status.textContent+=" · Attention : aucune zone FC n'a pu être calculée — consulte l'onglet « Diagnostic zones FC », et vérifie que les colonnes Duration x% FCmax existent bien.";
+    }
+    // Stats descriptives par zone
+    tbody.replaceChildren();
+    zoneDefinitions.forEach((z,i)=>{
+      const curVals=players.map(p=>zoneMeanByPlayer(curRows,p,i)).filter(v=>v!==null);
+      const prevPlayers=uniqueValues(prevRows.map(rowPlayer));
+      const prevVals=prevPlayers.map(p=>zoneMeanByPlayer(prevRows,p,i)).filter(v=>v!==null);
+      const curMean=curVals.length?curVals.reduce((a,b)=>a+b,0)/curVals.length:null;
+      const prevMean=prevVals.length?prevVals.reduce((a,b)=>a+b,0)/prevVals.length:null;
+      const ecart=curMean!==null&&prevMean!==null?curMean-prevMean:null;
+      const pct=ecart!==null&&prevMean?ecart/prevMean*100:null;
+      const tr=document.createElement("tr");
+      [z.name,fmt(curMean),fmt(prevMean),fmt(ecart),pct!==null?(pct>=0?"+":"")+fmt(pct,1)+" %":"—"].forEach(v=>{
+        const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  dateSel.addEventListener("change",update);
+  update();
 }
 
-function renderDiag(page){
+/* ================= Page : Groupes personnalisés ================= */
+function loadGroups(){
+  try{const raw=localStorage.getItem("nbGroups");if(raw){const g=JSON.parse(raw);if(Array.isArray(g))groups=g;}}catch(e){}
+}
+function saveGroups(){try{localStorage.setItem("nbGroups",JSON.stringify(groups));}catch(e){}}
+function renderGroupPage(page){
   const sec=document.createElement("section");
-  sec.appendChild(h2("Diagnostic des zones FC"));
-  const p=document.createElement("p");p.className="muted";
-  p.textContent="Colonnes détectées dans tes fichiers. Une zone reste vide si une de ses colonnes sources est absente ou ne contient aucune valeur exploitable.";
-  sec.appendChild(p);
+  const h=document.createElement("h2");h.textContent="Groupes personnalisés";sec.appendChild(h);
+  const help=document.createElement("p");help.className="muted";
+  help.textContent="Crée des groupes (ex. « Avants », « Arrières », « Groupe 1 ») en sélectionnant les joueurs souhaités. Les groupes sont conservés dans ton navigateur.";
+  sec.appendChild(help);
+  const mgr=document.createElement("div");mgr.className="row";
+  const nf=document.createElement("div");nf.className="field";
+  const nl=document.createElement("label");nl.textContent="Nom du nouveau groupe";
+  const ni=document.createElement("input");ni.type="text";ni.placeholder="Ex. Avants";
+  nf.append(nl,ni);mgr.appendChild(nf);
+  const addBtn=document.createElement("button");addBtn.type="button";addBtn.textContent="Créer le groupe";
+  addBtn.addEventListener("click",()=>{
+    const name=ni.value.trim();
+    if(!name){alert("Donne un nom à ton groupe.");return;}
+    groups.push({name,players:[]});
+    saveGroups();ni.value="";renderPage();
+  });
+  mgr.appendChild(addBtn);sec.appendChild(mgr);
+  page.appendChild(sec);
+  const players=uniqueValues(allRows.map(rowPlayer));
+  if(!groups.length){
+    page.appendChild(emptyMsg("Aucun groupe créé pour le moment. Crée ton premier groupe ci-dessus."));
+    return;
+  }
+  groups.forEach((g,gi)=>{
+    const card=document.createElement("section");card.className="group-card";
+    const head=document.createElement("div");head.className="group-head";
+    const h3=document.createElement("h3");h3.textContent=g.name;
+    const actions=document.createElement("div");actions.className="actions";
+    const delBtn=document.createElement("button");delBtn.type="button";delBtn.className="danger";delBtn.textContent="Supprimer";
+    delBtn.addEventListener("click",()=>{
+      if(confirm(`Supprimer le groupe « ${g.name} » ?`)){groups.splice(gi,1);saveGroups();renderPage();}
+    });
+    actions.appendChild(delBtn);head.append(h3,actions);card.appendChild(head);
+    const chips=document.createElement("div");chips.className="chips";
+    players.forEach(p=>{
+      const chip=document.createElement("button");chip.type="button";chip.className="chip"+(g.players.includes(p)?" on":"");
+      chip.textContent=p;chip.setAttribute("aria-pressed",chip.classList.contains("on")?"true":"false");
+      chip.addEventListener("click",()=>{
+        const i=g.players.indexOf(p);
+        if(i>=0)g.players.splice(i,1);else g.players.push(p);
+        saveGroups();renderPage();
+      });
+      chips.appendChild(chip);
+    });
+    card.appendChild(chips);
+    if(!g.players.length){
+      card.appendChild(emptyMsg("Sélectionne au moins un joueur dans ce groupe."));
+    }else{
+      const rows=getFilteredRows(g.players);
+      card.appendChild(metricCards(rows,g.name));
+      const h4=document.createElement("h3");h4.textContent="Zones de fréquence cardiaque (moyennes du groupe)";
+      const zc=document.createElement("div");zc.className="chart";
+      zoneAverageChart(rows,zc,1);
+      card.append(h4,zc);
+      const st=document.createElement("h3");st.textContent="Statistiques par zone";
+      card.append(st,zoneStatsTable(rows));
+      const ph=document.createElement("h3");ph.textContent="Joueurs du groupe";
+      card.appendChild(ph);
+      const wrap=document.createElement("div");wrap.className="table-wrap";
+      const t=document.createElement("table");
+      t.innerHTML="<thead><tr><th>Joueur</th><th>Lignes</th><th>Dates</th><th>Durée totale moyenne (min)</th></tr></thead>";
+      const tb=document.createElement("tbody");
+      const totalCol=findColumn(allColumns,["Total Duration"]);
+      g.players.forEach(p=>{
+        const pr=rows.filter(r=>rowPlayer(r)===p);
+        if(!pr.length)return;
+        const s=totalCol?stats(pr.map(r=>durMin(r[totalCol]))).mean:null;
+        const tr=document.createElement("tr");
+        [p,fmt(pr.length,0),fmt(uniqueValues(pr.map(rowDate).filter(Boolean)).length,0),fmt(s)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);wrap.appendChild(t);card.appendChild(wrap);
+      const expBtn=document.createElement("button");expBtn.type="button";expBtn.className="secondary";expBtn.style.marginTop="10px";
+      expBtn.textContent="Exporter les statistiques de ce groupe (CSV)";
+      expBtn.addEventListener("click",()=>{
+        const out=[];
+        allColumns.filter(c=>rows.some(r=>parseNumber(r[c])!==null)).forEach(c=>{
+          const s=stats(rows.map(r=>parseNumber(r[c])));
+          out.push({Groupe:g.name,Variable:c,N:s.n,Moyenne:s.mean,Mediane:s.median,Minimum:s.min,Maximum:s.max,Somme:s.sum});
+        });
+        downloadCSV(`stats_groupe_${g.name.replace(/\W+/g,"_")}.csv`,["Groupe","Variable","N","Moyenne","Mediane","Minimum","Maximum","Somme"],out);
+      });
+      card.appendChild(expBtn);
+    }
+    page.appendChild(card);
+  });
+}
+
+/* ================= Page : Diagnostic zones FC ================= */
+function buildZoneDiag(container){
+  const sec=document.createElement("section");
+  const h=document.createElement("h2");h.textContent="Diagnostic des zones FC";
+  sec.appendChild(h);
+  const title=document.createElement("p");title.className="muted";
+  title.textContent="Colonnes détectées dans tes fichiers. Une zone reste vide si une de ses colonnes sources est absente ou ne contient aucune valeur exploitable.";
+  sec.appendChild(title);
   const wrap=document.createElement("div");wrap.className="table-wrap";
   const t=document.createElement("table");
   t.innerHTML="<thead><tr><th>Zone FC</th><th>Colonnes sources attendues</th><th>Colonnes détectées</th><th>Lignes avec zone calculée</th></tr></thead>";
   const tb=document.createElement("tbody");
-  const rows=[
-    ["Récupération","Duration <50% FCmax · Duration 50-60% FCmax · Duration 60-70%FCmax","✓ · ✓ · ✓","326 / 326"],
-    ["Moyenne intensité","Duration 70-80%FCmax · Duration 80-85% FC max","✓ · ✓","326 / 326"],
-    ["Haute intensité","Duration 85-90% FC max · Duration 90-95% FC max","✓ · ✓","326 / 326"],
-    ["Très haute intensité","Duration 95-100% FC max","« Duration 95-100% FC max » introuvable","0 / 326"],
-  ];
-  rows.forEach(r=>{const tr=document.createElement("tr");r.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});tb.appendChild(tr);});
+  zoneDefinitions.forEach(z=>{
+    const tr=document.createElement("tr");
+    const expected=z.sources.map(c=>c[0]).join("  ·  ");
+    const found=z.columns.map((c,i)=>c?c+" ✓":"« "+z.sources[i][0]+" » introuvable").join("  ·  ");
+    const ok=allRows.filter(r=>zoneValue(r,z)!==null).length;
+    [z.name,expected,found,`${fmt(ok,0)} / ${fmt(allRows.length,0)}`].forEach(v=>{
+      const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
   t.appendChild(tb);wrap.appendChild(t);sec.appendChild(wrap);
-  page.appendChild(sec);
+  container.appendChild(sec);
 }
 
-function h2(text){const h=document.createElement("h2");h.textContent=text;return h;}
-
+/* ================= Navigation ================= */
 function renderPage(){
   const page=$("page");page.replaceChildren();
-  if(currentPage==="summary")renderSummary(page);
-  else if(currentPage==="diag")renderDiag(page);
-  else renderPlaceholder(page,{title:currentPage==="player"?"Statistiques par joueur":"Groupes personnalisés",
-    text:"Page inchangée dans cet aperçu — seules les modifications demandées sont montrées ici."});
+  if(currentPage==="summary")renderSummaryPage(page);
+  else if(currentPage==="player")renderPlayerPage(page);
+  else if(currentPage==="diag")buildZoneDiag(page);
+  else renderGroupPage(page);
 }
-let currentPage="summary";
 document.querySelectorAll("#topMenu button").forEach(btn=>{
   btn.addEventListener("click",()=>{
     currentPage=btn.dataset.page;
@@ -182,7 +782,67 @@ document.querySelectorAll("#topMenu button").forEach(btn=>{
     renderPage();
   });
 });
-renderPage();
+
+/* ================= Import ================= */
+async function importFiles(){
+  const files=[...$("csvFiles").files,...$("folderFiles").files].filter(f=>/.csv$/i.test(f.name));
+  const unique=new Map(files.map(f=>[`${f.name}|${f.size}|${f.lastModified}`,f]));
+  const chosen=[...unique.values()];
+  if(!chosen.length){setStatus("Choisis au moins un fichier CSV.");return;}
+  $("importBtn").disabled=true;
+  setStatus(`Import de ${chosen.length} fichier(s) en cours…`);
+  try{
+    const parsed=await Promise.all(chosen.map(parseCSVFile));
+    const base=parsed[0].fields;
+    const compatible=parsed.filter(p=>compatibleHeaders(base,p.fields));
+    const rejected=parsed.filter(p=>!compatibleHeaders(base,p.fields));
+    allColumns=[...base];
+    allRows=[];
+    compatible.forEach(p=>{
+      p.rows.forEach(row=>{
+        const normalized={};
+        base.forEach(col=>{
+          const actual=p.fields.find(c=>normalizeHeader(c)===normalizeHeader(col));
+          normalized[col]=actual?row[actual]:"";
+        });
+        normalized["Fichier source"]=p.file.name;
+        allRows.push(normalized);
+      });
+    });
+    if(!allColumns.includes("Fichier source"))allColumns.push("Fichier source");
+    if(!allRows.length)throw new Error("Les fichiers ne contiennent aucune ligne de données.");
+    prepareZones();
+    populateFilters();
+    $("analysisArea").classList.remove("hidden");
+    renderPage();
+    const msg=`${allRows.length} ligne(s) importée(s) depuis ${compatible.length} fichier(s).`+
+      (rejected.length?` ${rejected.length} fichier(s) ignoré(s) (colonnes incompatibles).`:"")+
+      (zoneDefinitions.some(z=>z.columns.some(c=>!c))?" Attention : certaines colonnes de zones FC sont absentes — détail dans l'onglet « Diagnostic zones FC ».":"");
+    setStatus(msg);
+  }catch(err){setStatus("Erreur d'import : "+(err?.message||String(err)));}
+  finally{$("importBtn").disabled=false;}
+}
+function clearAll(){
+  allRows=[];allColumns=[];zoneDefinitions=[];
+  $("csvFiles").value="";$("folderFiles").value="";
+  $("analysisArea").classList.add("hidden");
+  $("page").replaceChildren();
+  setStatus("Aucun fichier importé.");
+}
+$("importBtn").addEventListener("click",importFiles);
+$("clearBtn").addEventListener("click",clearAll);
+$("resetBtn").addEventListener("click",resetFilters);
+$("exportFilteredBtn").addEventListener("click",()=>downloadCSV("donnees_filtrees.csv",allColumns,getFilteredRows()));
+$("exportStatsBtn").addEventListener("click",()=>{
+  const rows=getFilteredRows(),out=[];
+  allColumns.filter(c=>rows.some(r=>parseNumber(r[c])!==null)).forEach(c=>{
+    const s=stats(rows.map(r=>parseNumber(r[c])));
+    out.push({Variable:c,N:s.n,Moyenne:s.mean,Mediane:s.median,Minimum:s.min,Maximum:s.max,Somme:s.sum});
+  });
+  downloadCSV("statistiques.csv",["Variable","N","Moyenne","Mediane","Minimum","Maximum","Somme"],out);
+});
+["filterDate","period","activity","position"].forEach(id=>$(id).addEventListener("change",renderPage));
+loadGroups();
 </script>
 </body>
 </html>
