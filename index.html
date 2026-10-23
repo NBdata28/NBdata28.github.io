@@ -360,6 +360,48 @@ function histogramChart(container,values,variable){
   container.appendChild(svg);
 }
 
+/* ================= Graphique en courbes (% par zone) ================= */
+function lineChart(container,dates,series,colors,title){
+  container.replaceChildren();
+  const W=920,H=280,m={t:26,r:16,b:46,l:56};
+  const svg=svgEl("svg",{viewBox:`0 0 ${W} ${H}`,role:"img"});
+  const iw=W-m.l-m.r,ih=H-m.t-m.b;
+  for(let i=0;i<=4;i++){
+    const y=m.t+ih-ih*i/4;
+    svg.appendChild(svgEl("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#e2e8f0"}));
+    const t=svgEl("text",{x:m.l-8,y:y+4,"text-anchor":"end","font-size":11,fill:"#64748b"});
+    t.textContent=(25*i)+" %";svg.appendChild(t);
+  }
+  const xs=dates.map((d,i)=>dates.length>1?m.l+iw*i/(dates.length-1):m.l+iw/2);
+  dates.forEach((d,i)=>{
+    const t=svgEl("text",{x:xs[i],y:H-m.b+20,"text-anchor":"middle","font-size":11,fill:"#203040"});
+    t.textContent=displayDate(d).slice(0,5);svg.appendChild(t);
+  });
+  series.forEach((s,si)=>{
+    const idx=s.values.map((vv,k)=>vv===null?null:k).filter(k=>k!==null);
+    const pts=idx.map(i=>[xs[i],m.t+ih-ih*(Math.max(0,Math.min(100,s.values[i]))/100)]);
+    if(pts.length>1){
+      svg.appendChild(svgEl("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:colors[si],"stroke-width":2}));
+    }
+    idx.forEach((di,pn)=>{
+      svg.appendChild(svgEl("circle",{cx:pts[pn][0],cy:pts[pn][1],r:4,fill:colors[si]}));
+      if(s.labels&&s.labels[di]!==null&&s.labels[di]!==undefined){
+        const t=svgEl("text",{x:pts[pn][0],y:pts[pn][1]-10,"text-anchor":"middle","font-size":9,"font-weight":600,fill:"#203040"});
+        t.textContent=s.labels[di];svg.appendChild(t);
+      }
+    });
+  });
+  series.forEach((s,si)=>{
+    const lx=W-m.r-(series.length-si)*160,ly=14;
+    svg.appendChild(svgEl("circle",{cx:lx,cy:ly-4,r:5,fill:colors[si]}));
+    const t=svgEl("text",{x:lx+10,y:ly,"font-size":11,fill:"#203040"});
+    t.textContent=s._name||"";svg.appendChild(t);
+  });
+  const ht=svgEl("text",{x:m.l,y:14,"font-size":12,"font-weight":700,fill:"#203040"});
+  ht.textContent=title;svg.appendChild(ht);
+  container.appendChild(svg);
+}
+
 /* ================= Blocs communs ================= */
 function durMin(v){const n=parseNumber(v);return n===null?null:n/60;}
 function makeMetric(name,value){const d=document.createElement("div");d.className="metric";const n=document.createElement("div");n.className="name";n.textContent=name;const v=document.createElement("div");v.className="value";v.textContent=value;d.append(n,v);return d;}
@@ -555,9 +597,13 @@ function renderSummaryPage(page){
   f.append(lab,dateSel);row.appendChild(f);sec.appendChild(row);
   const status=document.createElement("div");status.className="status";sec.appendChild(status);
   const groupTitle=document.createElement("h3");
-  groupTitle.textContent="Zones FC par groupe de postes — moyenne (barre) et min–max (trait vertical)";
+  groupTitle.textContent="Zones FC par postes";
   const groupChart=document.createElement("div");groupChart.className="chart";
   sec.append(groupTitle,groupChart);
+  const linesTitle=document.createElement("h3");
+  linesTitle.textContent="Évolution des zones FC par groupe de postes (% du temps, séance après séance)";
+  const zoneLines=document.createElement("div");
+  sec.append(linesTitle,zoneLines);
   const chartTitle=document.createElement("h3");
   chartTitle.textContent="Zones de fréquence cardiaque par joueur (durée par séance)";
   const chart=document.createElement("div");chart.className="chart";
@@ -614,6 +660,38 @@ function renderSummaryPage(page){
     }else{
       groupChart.replaceChildren();
       groupChart.appendChild(emptyMsg("Colonne « Position Name » absente : le graphique par groupe de postes n'est pas disponible."));
+    }
+    // Titre dynamique : Activity Name + Date
+    const actCol=findColumn(allColumns,["Activity Name"]);
+    const acts=uniqueValues(curRows.map(r=>String(r[actCol]??"").trim()));
+    groupTitle.textContent=`Zones FC par postes — ${acts.length?acts.join(", ")+" · ":""}${displayDate(date)}`;
+    // Courbes d'évolution par zone (% du temps, avec Total Duration au-dessus des points)
+    zoneLines.replaceChildren();
+    if(posCol){
+      const groupNames=["Big Five","3e Ligne","Trois quarts"];
+      const lineColors=["#173f5f","#2878a8","#f59e0b"];
+      const totalCol=findColumn(allColumns,["Total Duration"]);
+      zoneDefinitions.forEach((z,zi)=>{
+        const series=groupNames.map(g=>({_name:g,values:[],labels:[]}));
+        dates.forEach(d=>{
+          groupNames.forEach((g,gi)=>{
+            const rows=allRows.filter(r=>rowDate(r)===d&&positionGroup(r[posCol])===g);
+            const means=zoneDefinitions.map((zz,i)=>stats(rows.map(r=>zoneFromRow(r,i))).mean);
+            const totZ=means.reduce((a,b)=>a+(b||0),0);
+            if(means[zi]===null||!totZ){series[gi].values.push(null);series[gi].labels.push(null);}
+            else{
+              series[gi].values.push(means[zi]/totZ*100);
+              const dur=totalCol?stats(rows.map(r=>durMin(r[totalCol]))).mean:totZ;
+              series[gi].labels.push(dur!==null?fmt(dur,0)+"′":null);
+            }
+          });
+        });
+        const sub=document.createElement("div");sub.className="chart";
+        lineChart(sub,dates,series,lineColors,z.name);
+        zoneLines.appendChild(sub);
+      });
+    }else{
+      zoneLines.appendChild(emptyMsg("Colonne « Position Name » absente : les courbes d'évolution par poste ne sont pas disponibles."));
     }
     // 2e graphique : un groupe de barres par joueur, une barre par zone FC
     const zoneSeries=zoneDefinitions.map((z,i)=>{
